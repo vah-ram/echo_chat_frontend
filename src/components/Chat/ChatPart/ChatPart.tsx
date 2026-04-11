@@ -57,7 +57,7 @@
             }
     };
     callAsync();
-  }, [])
+  }, [selectedChat?.id])
 
   useEffect(() => {
     socket.on('message-added', (newMessage) => {
