@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react'
-import ChatItem_component from './ChatItem_component'
+import { useState } from 'react'
+import ChatItemComponent from './ChatItemComponent';
 import SearchUserComponent from './SearchUserComponent'
 import { User } from '../../types/UserType';
 import ChatPart from './ChatPart/ChatPart';
@@ -51,7 +51,7 @@ function Chats() {
 
                         <div className='w-full h-full flex flex-col border-t-1 
                         border-gray-300 mt-2'>
-                            <ChatItem_component 
+                            <ChatItemComponent 
                                 setSelectedChat={setSelectedChat}/>
                         </div>
                     </>

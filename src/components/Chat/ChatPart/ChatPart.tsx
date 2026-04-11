@@ -162,7 +162,7 @@
           }}
         >
           <ul className="w-full flex gap-3 px-2">
-            <li className="list-none">
+            <li className="list-none max-md:hidden">
               <button
                 className="w-[45px] h-[45px] flex 
                         items-center justify-center border-1 border-gray-300 
@@ -187,7 +187,7 @@
                 </svg>
               </button>
             </li>
-            <li className="list-none">
+            <li className="list-none max-md:hidden">
               <button
                 className="w-[45px] h-[45px] flex 
                         items-center justify-center border-1 border-gray-300 

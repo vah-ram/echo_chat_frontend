@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import LeftMenuHeader from './components/Headers/LeftMenuHeader';
 import Chats from './components/Chat/Chats';
 import Profile from './components/Profile/Profile';
@@ -8,7 +8,7 @@ import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import axiosInstance from "./lib/axios"
 import { API } from './config/api';
-import { connectSocket, socket } from './socket/socket';
+import { connectSocket } from './socket/socket';
 
 function App() {
   const location = useLocation();

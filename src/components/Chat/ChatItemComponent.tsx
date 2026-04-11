@@ -6,7 +6,7 @@ type Props = {
   setSelectedChat: React.Dispatch<React.SetStateAction<any>>;
 };
 
-function ChatItem_component({ user, setSelectedChat }: Props) {
+function ChatItemComponent({ user, setSelectedChat }: Props) {
   return (
     <div className='w-full h-[80px] border-b-1 
     border-gray-300 hover:bg-gray-200 duration-300 
@@ -32,4 +32,4 @@ function ChatItem_component({ user, setSelectedChat }: Props) {
   )
 }
 
-export default ChatItem_component
+export default ChatItemComponent;

@@ -1,8 +1,7 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react'
 
 function LeftMenuHeader() {
-  const [currentPage, setCurrentPage] = useState('');
+  const [currentPage] = useState('');
 
   return (
     <header 

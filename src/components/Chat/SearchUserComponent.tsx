@@ -1,16 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import axiosInstance from '../../lib/axios';
 import { API } from '../../config/api';
 import { User } from '../../types/UserType';
-import ChatItem_component from './ChatItem_component';
+import ChatItemComponent from './ChatItemComponent';
 
 type Props = {
   setIsSearching: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedChat: React.Dispatch<React.SetStateAction<any>>;
 };
 
-function SearchUserComponent({ setIsSearching, setSelectedChat }: Props) {  const navigate = useNavigate();
+function SearchUserComponent({ setIsSearching, setSelectedChat }: Props) { 
   const [searchedUsers, setSearchedUsers] = useState<User[]>([]);
     const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -64,7 +63,7 @@ function SearchUserComponent({ setIsSearching, setSelectedChat }: Props) {  cons
                 border-gray-300 mt-10'>
                 {
                     searchedUsers.map((user) => (
-                        <ChatItem_component
+                        <ChatItemComponent
                             user={user}
                             setSelectedChat={setSelectedChat}
                         />
