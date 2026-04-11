@@ -26,7 +26,7 @@ function App() {
       }
     };
     callProfile();
-  }, []); 
+  }); 
 
   return (
     <main className="w-full flex h-screen">

@@ -22,7 +22,6 @@
 
     const addMessage = async () => {
       if(!message) return;
-
       try {
           const response = await axiosInstance.post(API.addMessage, {
               senderId: profile.id,
