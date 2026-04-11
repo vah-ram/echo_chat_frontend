@@ -1,5 +1,5 @@
-const BASE_URL = "http://localhost:5000";
-//https://echo-chat-backend-8.onrender.com
+const BASE_URL = "https://echo-chat-backend-8.onrender.com";
+
 export const API = {
     socketMessageUrl: `${BASE_URL}/message`,
     profileUrl: `${BASE_URL}/user`,
