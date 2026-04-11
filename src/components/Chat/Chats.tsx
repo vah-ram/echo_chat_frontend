@@ -9,82 +9,344 @@ function Chats() {
   const [selectedChat, setSelectedChat] = useState<User | null>(null);
 
   return (
-    <section className='w-full h-full flex'>
-        <div className={`${isSearching ? 'w-[30%] max-md:w-full' : 'w-[25%] max-md:w-full'} h-full 
-        border-r-1 border-gray-300 flex 
-        flex-col max-md:${selectedChat ? 'hidden' : ''}`}>
-            {
-                isSearching ? (
-                    <SearchUserComponent 
-                        setIsSearching={setIsSearching}  
-                        setSelectedChat={setSelectedChat}/>
-                ) : (
-                    <> 
-                        <div className='p-4 w-full pt-5 flex flex-col'>
-                            <div className='flex items-center justify-between'>
-                                <h1 className='text-[19px] montserrat font-[600]'>
-                                    Messages
-                                </h1>
-                                
-                                <span className='w-[40px] h-[40px] 
-                                flex justify-center items-center text-white 
-                                bg-black text-[25px] rounded-xl pb-1 
-                                cursor-pointer'>
-                                    +
-                                </span>
-                            </div>
+    <>
+      {/* Google Fonts — Syne + DM Sans */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
 
-                            <div 
-                                className='flex items-center justify-center 
-                                w-full h-[45px] rounded-xl bg-[#f3f3f3] 
-                                border-1 border-gray-300 mt-5'
-                                onClick={() => setIsSearching(true)}>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" 
-                                className="lucide lucide-search text-[#3d3d3d] w-5 h-5 text-muted-foreground mx-3"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
-                                <input 
-                                    type="text"
-                                    placeholder='Search users' 
-                                    className='w-full h-full outline-none 
-                                    border-none'/>
-                            </div>
-                        </div>
+        :root {
+          --bg-base:        #0d0f14;
+          --bg-sidebar:     #13151c;
+          --bg-elevated:    #1c1f2b;
+          --bg-hover:       #22263a;
+          --bg-input:       #1a1d28;
+          --accent:         #6c8cff;
+          --accent-soft:    #3a4d99;
+          --accent-glow:    rgba(108,140,255,0.18);
+          --text-primary:   #eef0f8;
+          --text-secondary: #8a90b0;
+          --text-muted:     #454a6a;
+          --border:         rgba(255,255,255,0.06);
+          --border-strong:  rgba(255,255,255,0.11);
+          --shadow-deep:    0 8px 32px rgba(0,0,0,0.45);
+          --radius-sm:      10px;
+          --radius-md:      16px;
+          --radius-lg:      22px;
+          --radius-pill:    999px;
+          --font-display:   'Syne', sans-serif;
+          --font-body:      'DM Sans', sans-serif;
+        }
 
-                        <div className='w-full h-full flex flex-col border-t-1 
-                        border-gray-300 mt-2'>
-                            <ChatItemComponent 
-                                setSelectedChat={setSelectedChat}/>
-                        </div>
-                    </>
-                )
-            }
+        /* ── Root shell ─────────────────────────────── */
+        .chats-root {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          background: var(--bg-base);
+          font-family: var(--font-body);
+          color: var(--text-primary);
+          overflow: hidden;
+        }
+
+        /* ── Sidebar panel ──────────────────────────── */
+        .sidebar {
+          height: 100%;
+          background: var(--bg-sidebar);
+          border-right: 1px solid var(--border);
+          display: flex;
+          flex-direction: column;
+          transition: width 0.28s cubic-bezier(.4,0,.2,1);
+          flex-shrink: 0;
+        }
+        .sidebar--default  { width: 300px; }
+        .sidebar--searching { width: 340px; }
+
+        @media (max-width: 768px) {
+          .sidebar--default,
+          .sidebar--searching { width: 100%; }
+          .sidebar--hidden   { display: none !important; }
+          .chat-main--hidden { display: none !important; }
+        }
+
+        /* ── Sidebar header ─────────────────────────── */
+        .sidebar-header {
+          padding: 24px 20px 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+
+        .sidebar-top-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .sidebar-title {
+          font-family: var(--font-display);
+          font-size: 22px;
+          font-weight: 700;
+          color: var(--text-primary);
+          letter-spacing: -0.4px;
+          margin: 0;
+        }
+
+        /* ── New-chat FAB ───────────────────────────── */
+        .fab {
+          width: 38px;
+          height: 38px;
+          border-radius: var(--radius-sm);
+          background: var(--accent);
+          border: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 0 18px var(--accent-glow);
+          transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+          color: #fff;
+          font-size: 22px;
+          line-height: 1;
+          padding-bottom: 2px;
+          flex-shrink: 0;
+        }
+        .fab:hover {
+          transform: scale(1.08);
+          box-shadow: 0 0 28px rgba(108,140,255,0.38);
+          background: #839dff;
+        }
+        .fab:active { transform: scale(0.96); }
+
+        /* ── Search bar ─────────────────────────────── */
+        .search-bar {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          background: var(--bg-input);
+          border: 1px solid var(--border-strong);
+          border-radius: var(--radius-md);
+          padding: 0 14px;
+          height: 44px;
+          cursor: text;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .search-bar:hover,
+        .search-bar:focus-within {
+          border-color: var(--accent-soft);
+          box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .search-icon {
+          color: var(--text-muted);
+          flex-shrink: 0;
+          width: 17px;
+          height: 17px;
+        }
+
+        .search-input {
+          flex: 1;
+          background: transparent;
+          border: none;
+          outline: none;
+          font-family: var(--font-body);
+          font-size: 14px;
+          font-weight: 400;
+          color: var(--text-primary);
+          caret-color: var(--accent);
+        }
+        .search-input::placeholder { color: var(--text-muted); }
+
+        /* ── Divider ────────────────────────────────── */
+        .sidebar-divider {
+          height: 1px;
+          background: var(--border);
+          margin: 0 0 4px;
+          flex-shrink: 0;
+        }
+
+        /* ── Chat list scroll area ──────────────────── */
+        .chat-list {
+          flex: 1;
+          overflow-y: auto;
+          padding: 6px 10px 12px;
+          scrollbar-width: thin;
+          scrollbar-color: var(--bg-elevated) transparent;
+        }
+        .chat-list::-webkit-scrollbar       { width: 4px; }
+        .chat-list::-webkit-scrollbar-track  { background: transparent; }
+        .chat-list::-webkit-scrollbar-thumb  { background: var(--bg-elevated); border-radius: 4px; }
+
+        /* ── Main chat area ─────────────────────────── */
+        .chat-main {
+          flex: 1;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: var(--bg-base);
+          position: relative;
+          overflow: hidden;
+        }
+
+        /* subtle grid background on empty state */
+        .chat-main::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background-image:
+            linear-gradient(var(--border) 1px, transparent 1px),
+            linear-gradient(90deg, var(--border) 1px, transparent 1px);
+          background-size: 44px 44px;
+          pointer-events: none;
+          opacity: 0.5;
+        }
+
+        /* ── Empty-state ────────────────────────────── */
+        .empty-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+          position: relative;
+          z-index: 1;
+          animation: fadeUp 0.5s ease both;
+        }
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(18px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .empty-icon-wrap {
+          width: 80px;
+          height: 80px;
+          border-radius: var(--radius-lg);
+          background: var(--bg-elevated);
+          border: 1px solid var(--border-strong);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: var(--shadow-deep), 0 0 40px var(--accent-glow);
+        }
+        .empty-icon-wrap svg {
+          width: 36px;
+          height: 36px;
+          color: var(--accent);
+        }
+
+        .empty-title {
+          font-family: var(--font-display);
+          font-size: 20px;
+          font-weight: 700;
+          color: var(--text-primary);
+          margin: 4px 0 0;
+        }
+
+        .empty-sub {
+          font-size: 14px;
+          color: var(--text-secondary);
+          margin: 0;
+          font-weight: 400;
+        }
+      `}</style>
+
+      <section className="chats-root">
+
+        <div
+          className={[
+            'sidebar',
+            isSearching ? 'sidebar--searching' : 'sidebar--default',
+            selectedChat ? 'sidebar--hidden' : '',   /* mobile: hide when chat open */
+          ].join(' ')}
+        >
+          {isSearching ? (
+            <SearchUserComponent
+              setIsSearching={setIsSearching}
+              setSelectedChat={setSelectedChat}
+            />
+          ) : (
+            <>
+              <div className="sidebar-header">
+                <div className="sidebar-top-row">
+                  <h1 className="sidebar-title">Messages</h1>
+
+                  <button
+                    className="fab"
+                    aria-label="New conversation"
+                    title="New conversation"
+                  >
+                    +
+                  </button>
+                </div>
+
+                <div
+                  className="search-bar"
+                  onClick={() => setIsSearching(true)}
+                >
+                  <svg
+                    className="search-icon"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder="Search conversations…"
+                    className="search-input"
+                    readOnly
+                  />
+                </div>
+              </div>
+
+              <div className="sidebar-divider" />
+
+              <div className="chat-list">
+                <ChatItemComponent setSelectedChat={setSelectedChat} />
+              </div>
+            </>
+          )}
         </div>
-        <div className={`chat_part w-full h-full 
-        flex flex-col items-center justify-center 
-        max-md:${selectedChat ? '' : 'hidden'}`}>
-            {
-                selectedChat ? (
-                    <ChatPart 
-                        selectedChat={selectedChat}
-                        setSelectedChat={setSelectedChat}/>
-                ) : 
-                (
-                    <>
-                        <span className='p-7 bg-gray-200 rounded-full'>
-                            <svg className="w-12 h-12 text-muted-foreground text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                        </span>
 
-                        <span className='font-[600] text-[20px] mt-1 text-gray-800'>
-                            Select a conversation
-                        </span>
-                        <p className='font-[600] text-gray-600 mt-2 text-[15px]'>
-                            Choose a chat from the list to start messaging
-                        </p>
-                    </>
-                )
-            }
+        <div
+          className={[
+            'chat-main',
+            !selectedChat ? 'chat-main--hidden' : '',  /* mobile: hidden when no chat */
+          ].join(' ')}
+          style={selectedChat ? { alignItems: 'stretch', justifyContent: 'flex-start' } : {}}
+        >
+          {selectedChat ? (
+            <ChatPart
+              selectedChat={selectedChat}
+              setSelectedChat={setSelectedChat}
+            />
+          ) : (
+            <div className="empty-state">
+              <div className="empty-icon-wrap">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.6"
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+              </div>
+              <p className="empty-title">Select a conversation</p>
+              <p className="empty-sub">Choose a chat from the list to start messaging</p>
+            </div>
+          )}
         </div>
-    </section>
-  )
+
+      </section>
+    </>
+  );
 }
 
-export default Chats
+export default Chats;
