@@ -1,16 +1,29 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import ChatItemComponent from './ChatItemComponent';
 import SearchUserComponent from './SearchUserComponent'
 import { User } from '../../types/UserType';
 import ChatPart from './ChatPart/ChatPart';
+import { API } from '../../config/api';
+import axiosInstance from '../../lib/axios';
 
 function Chats() {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedChat, setSelectedChat] = useState<User | null>(null);
+  const [contacts, setContacts] = useState([]);
+
+  useEffect(() => {
+    const callSync = async () => {
+      const response = await axiosInstance.get(API.getContacts);
+      
+      if(response) {
+        setContacts(response.data)
+      }
+    };
+    callSync();
+  }, []);
 
   return (
     <>
-      {/* Google Fonts — Syne + DM Sans */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
 
@@ -256,7 +269,7 @@ function Chats() {
           className={[
             'sidebar',
             isSearching ? 'sidebar--searching' : 'sidebar--default',
-            selectedChat ? 'sidebar--hidden' : '',   /* mobile: hide when chat open */
+            selectedChat ? 'sidebar--hidden' : '', 
           ].join(' ')}
         >
           {isSearching ? (
@@ -308,7 +321,15 @@ function Chats() {
               <div className="sidebar-divider" />
 
               <div className="chat-list">
-                <ChatItemComponent setSelectedChat={setSelectedChat} />
+                {
+                  contacts?.map((contact: any) => (
+                    <ChatItemComponent
+                      key={contact.id}
+                      user={contact}
+                      setSelectedChat={setSelectedChat}
+                    />
+                  ))
+                }
               </div>
             </>
           )}
