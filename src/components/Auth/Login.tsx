@@ -17,10 +17,6 @@ function Login() {
   }
 
   const generateId = (): string => {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-      return crypto.randomUUID();
-    }
-
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
       const r = Math.random() * 16 | 0;
       const v = c === 'x' ? r : ((r & 0x3) | 0x8);
@@ -34,7 +30,7 @@ function Login() {
       return;
     };
     const existingId = localStorage.getItem("device_id");
-    const deviceId = existingId ?? generateId();
+    const deviceId = existingId && existingId.length > 0 ? existingId : generateId();
 
     try {
       const response = await axios.post(API.loginUrl, {
@@ -44,6 +40,7 @@ function Login() {
       });
 
       if(response.data) {
+        localStorage.setItem("device_id", deviceId);
         localStorage.setItem("accessToken", response.data.accessToken);
         navigate('/')
       } else {
