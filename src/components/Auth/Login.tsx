@@ -1,5 +1,5 @@
 import axios from "axios";
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast, Toaster } from "sonner";
 import { API } from "../../config/api";
@@ -16,22 +16,34 @@ function Login() {
     duration: 2000
   }
 
+  const generateId = (): string => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : ((r & 0x3) | 0x8);
+      return v.toString(16);
+    });
+  };
+
   const loginFunc = async() => {
     if(!email || !password) {
       toast.error("Խնդրում ենք լրացնել բոլոր տվյալները", toastSettings as object);
       return;
     };
-    const newId = crypto.randomUUID();
+    const existingId = localStorage.getItem("device_id");
+    const deviceId = existingId ?? generateId();
 
     try {
       const response = await axios.post(API.loginUrl, {
         email,
         password,
-        deviceId: newId
+        deviceId
       });
 
       if(response.data) {
-        localStorage.setItem("device_id", newId);
         localStorage.setItem("accessToken", response.data.accessToken);
         navigate('/')
       } else {
