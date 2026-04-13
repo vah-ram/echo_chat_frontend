@@ -2,13 +2,6 @@ import { Navigate, useLocation } from 'react-router-dom';
 
 const PUBLIC_PATHS = ['/login', '/register'];
 
-function getCookie(name: string): string | undefined {
-  return document.cookie
-    .split('; ')
-    .find((row) => row.startsWith(name + '='))
-    ?.split('=')[1];
-}
-
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
 
