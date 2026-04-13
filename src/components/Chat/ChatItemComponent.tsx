@@ -72,7 +72,11 @@ function ChatItemComponent({ user, setSelectedChat }: Props) {
       <div className="ci-row" onClick={() => setSelectedChat(user)}>
         <div className="ci-avatar-wrap">
           <div className="ci-avatar" />
-          <span className="ci-dot" />
+          {
+            user?.isOnline ? (
+              <span className="ci-dot" />
+            ) : null
+          }
         </div>
 
         <div className="ci-info">

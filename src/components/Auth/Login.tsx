@@ -21,14 +21,17 @@ function Login() {
       toast.error("Խնդրում ենք լրացնել բոլոր տվյալները", toastSettings as object);
       return;
     };
+    const newId = crypto.randomUUID();
 
     try {
       const response = await axios.post(API.loginUrl, {
         email,
-        password
+        password,
+        deviceId: newId
       });
 
       if(response.data) {
+        localStorage.setItem("device_id", newId);
         localStorage.setItem("accessToken", response.data.accessToken);
         navigate('/')
       } else {

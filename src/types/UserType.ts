@@ -1,4 +1,3 @@
-import React from "react";
 
 export type User = {
     id: string,
@@ -6,6 +5,7 @@ export type User = {
     email: string,
     username: string,
     profileImageUrl: string,
+    isOnline?: boolean;
 };
 
 

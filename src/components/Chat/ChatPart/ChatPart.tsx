@@ -11,7 +11,8 @@ type Props = {
 };
 
 function ChatPart({ selectedChat, setSelectedChat }: Props) {
-  const soundRef = useRef<HTMLAudioElement>(null);
+  const soundReceiveRef = useRef<HTMLAudioElement>(null);
+  const soundSendRef = useRef<HTMLAudioElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const profile = JSON.parse(localStorage.getItem("profile") || "{}");
   const [message, setMessage] = useState("");
@@ -30,6 +31,7 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
         message,
       });
       if (response.data) {
+        soundSendRef?.current?.play()
         setChats((prev) => [...prev, response.data]);
         setMessage("");
       }
@@ -54,7 +56,7 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
 
   useEffect(() => {
     socket.on("message-added", (newMessage) => {
-      soundRef?.current?.play();
+      soundReceiveRef?.current?.play();
       setChats((prev) => [...prev, newMessage]);
     });
     return () => { socket.off("message-added"); };
@@ -135,6 +137,15 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
           display: inline-block;
         }
 
+        .cp-status-not-active {
+          font-size: 12px;
+          color: gray;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+        }
+
         .cp-more-btn {
           width: 38px; height: 38px;
           border-radius: var(--radius-sm);
@@ -150,7 +161,6 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
         .cp-messages {
           flex: 1;
           overflow-y: auto;
-          padding: 20px 24px;
           display: flex;
           flex-direction: column;
           gap: 10px;
@@ -285,7 +295,15 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
 
             <div className="cp-user-info">
               <span className="cp-username">{selectedChat?.username}</span>
-              <span className="cp-status">Active now</span>
+              {
+                selectedChat?.isOnline ? (
+                  <span className="cp-status">Active now</span>
+                ) : (
+                  <span className="cp-status-not-active">
+                    Last seen recently
+                  </span>
+                )
+              }
             </div>
           </div>
 
@@ -296,7 +314,7 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
           </button>
         </header>
 
-        <div className="cp-messages">
+        <div className="cp-messages px-5 py-4 max-md:px-3">
           {chats.map((chat: any) => (
             <div
               key={chat?.id}
@@ -351,7 +369,8 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
       </section>
 
       <Toaster richColors />
-      <audio src="/sound/message-send.mp3" preload="auto" ref={soundRef} />
+      <audio src="/sound/message-receive.mp3" preload="auto" ref={soundReceiveRef} />
+      <audio src="/sound/message-send.mp3" preload="auto" ref={soundSendRef} />
     </>
   );
 }

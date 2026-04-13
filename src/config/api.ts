@@ -9,5 +9,6 @@ export const API = {
     getContacts: `${BASE_URL}/user/get-contacts`,
     registerUrl: `${BASE_URL}/auth/register`,
     loginUrl: `${BASE_URL}/auth/login`,
-    verifyEmailUrl: `${BASE_URL}/auth/verify-email`
+    verifyEmailUrl: `${BASE_URL}/auth/verify-email`,
+    setFcmtokenUrl: `${BASE_URL}/user/add-fcm-token`,
 }

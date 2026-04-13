@@ -5,21 +5,53 @@ import { User } from '../../types/UserType';
 import ChatPart from './ChatPart/ChatPart';
 import { API } from '../../config/api';
 import axiosInstance from '../../lib/axios';
+import { socket } from '../../socket/socket';
+
+type OnlinePayload = {
+  userId: string;
+};
 
 function Chats() {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedChat, setSelectedChat] = useState<User | null>(null);
-  const [contacts, setContacts] = useState([]);
+  const [contacts, setContacts] = useState<User[]>([]);
 
   useEffect(() => {
     const callSync = async () => {
       const response = await axiosInstance.get(API.getContacts);
-      
-      if(response) {
-        setContacts(response.data)
+
+      if (response) {
+        setContacts(response.data);
       }
     };
+
     callSync();
+  }, []);
+
+  useEffect(() => {
+    const handleOnline = ({ userId }: OnlinePayload) => {
+      setContacts((prev) =>
+        prev.map((c) =>
+          c.id === userId ? { ...c, isOnline: true } : c
+        )
+      );
+    };
+
+    const handleOffline = ({ userId }: OnlinePayload) => {
+      setContacts((prev) =>
+        prev.map((c) =>
+          c.id === userId ? { ...c, isOnline: false } : c
+        )
+      );
+    };
+
+    socket.on('user-online', handleOnline);
+    socket.on('user-offline', handleOffline);
+
+    return () => {
+      socket.off('user-online', handleOnline);
+      socket.off('user-offline', handleOffline);
+    };
   }, []);
 
   return (
