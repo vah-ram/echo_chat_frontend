@@ -1,6 +1,11 @@
 import { useState } from 'react'
+import { User } from '../../types/UserType';
 
-function LeftMenuHeader() {
+type Props = {
+  selectedChat: User | null;
+};
+
+function LeftMenuHeader({ selectedChat }: Props) {
   const [currentPage] = useState('');
 
   return (
@@ -18,8 +23,6 @@ function LeftMenuHeader() {
           padding: 24px 0 20px;
           flex-shrink: 0;
         }
-
-        @media (max-width: 768px) { .lmh-root { display: none; } }
 
         .lmh-logo {
           width: 40px; height: 40px;
@@ -77,9 +80,55 @@ function LeftMenuHeader() {
           background: rgba(239,68,68,0.15);
           color: #ef4444;
         }
+
+        /* ── Mobile ── */
+        @media (max-width: 768px) {
+          .lmh-root {
+            width: auto;
+            height: auto;
+            background: var(--bg-sidebar);
+            border-right: none;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            flex-direction: row;
+            justify-content: center;
+            padding: 6px 10px;
+            position: fixed;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+          }
+
+          .lmh-root--hidden {
+            display: none;
+          }
+
+          .lmh-logo,
+          .lmh-logout-btn {
+            display: none;
+          }
+
+          .lmh-nav {
+            flex-direction: row;
+            gap: 2px;
+          }
+
+          .lmh-nav-btn {
+            width: 38px;
+            height: 36px;
+            border-radius: 10px;
+          }
+
+          .lmh-nav-btn svg {
+            width: 17px;
+            height: 17px;
+          }
+        }
       `}</style>
 
-      <header className="lmh-root">
+      <header className={`lmh-root ${selectedChat ? ' lmh-root--hidden' : ''}`}>
         <div className="lmh-logo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />

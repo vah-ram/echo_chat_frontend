@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast, Toaster } from "sonner";
 import { API } from "../../config/api";
+import axiosInstance from "../../lib/axios";
+import { getDeviceId, getFcmToken } from "../../fcm/get-fcm";
 
 function Login() {
   const navigate = useNavigate();
@@ -16,32 +18,37 @@ function Login() {
     duration: 2000
   }
 
-  const generateId = (): string => {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = Math.random() * 16 | 0;
-      const v = c === 'x' ? r : ((r & 0x3) | 0x8);
-      return v.toString(16);
-    });
-  };
-
   const loginFunc = async() => {
     if(!email || !password) {
       toast.error("Խնդրում ենք լրացնել բոլոր տվյալները", toastSettings as object);
       return;
     };
-    const existingId = localStorage.getItem("device_id");
-    const deviceId = existingId && existingId.length > 0 ? existingId : generateId();
-
     try {
       const response = await axios.post(API.loginUrl, {
         email,
-        password,
-        deviceId
+        password
       });
 
       if(response.data) {
-        localStorage.setItem("device_id", deviceId);
-        localStorage.setItem("accessToken", response.data.accessToken);
+        localStorage.setItem("accessToken", response?.data?.accessToken);
+
+        const fcmToken = await getFcmToken();
+        const deviceId = getDeviceId();
+
+        console.log(fcmToken)
+        console.log(deviceId)
+
+        if(fcmToken) {
+          try {
+            await axiosInstance.post(API.setFcmtokenUrl, { 
+              fcmToken,
+              platform: "web",
+              deviceId
+            });
+          } catch (error) {
+            console.error("Error setting FCM token:", error);
+          }
+        }
         navigate('/')
       } else {
         return;

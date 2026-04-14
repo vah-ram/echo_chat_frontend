@@ -11,7 +11,7 @@ type OnlinePayload = {
   userId: string;
 };
 
-function Chats() {
+function Chats({setIsSelectedChat}: {setIsSelectedChat: (chat: User | null) => void}) {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedChat, setSelectedChat] = useState<User | null>(null);
   const [contacts, setContacts] = useState<User[]>([]);
@@ -27,6 +27,10 @@ function Chats() {
 
     callSync();
   }, []);
+
+  useEffect(() => {
+    setIsSelectedChat(selectedChat);
+  }, [selectedChat, setIsSelectedChat]);
 
   useEffect(() => {
     const handleOnline = ({ userId }: OnlinePayload) => {

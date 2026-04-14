@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import LeftMenuHeader from './components/Headers/LeftMenuHeader';
 import Chats from './components/Chat/Chats';
 import Profile from './components/Profile/Profile';
@@ -10,40 +10,37 @@ import axiosInstance from "./lib/axios"
 import { API } from './config/api';
 import { connectSocket } from './socket/socket';
 import ProtectedRoute from './ProtectedRoute';
-import { getFcmToken } from './fcm/get-fcm';
+import { User } from './types/UserType';
 
 function App() {
   const location = useLocation();
 
   const isAuthPage = location.pathname === "/login" || location.pathname === "/register";
-
+  const [selectedChat, setIsSelectedChat] = useState<User | null>(null);
+  
   useEffect(() => {
-  const fetchToken = async () => {
-    const fcmToken = await getFcmToken();
-
-    const deviceId = localStorage.getItem("device_id");
-
-    if(fcmToken) {
-      try {
-        await axiosInstance.post(API.setFcmtokenUrl, { 
-          fcmToken,
-          platform: "web",
-          deviceId
-        });
-      } catch (error) {
-        console.error("Error setting FCM token:", error);
+    const registerSW = async () => {
+      if ('serviceWorker' in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+          console.log('✅ SW registered:', registration);
+        } catch (err) {
+          console.error('❌ SW registration failed:', err);
+        }
       }
-    }
-  };
+    };
 
-  fetchToken();
-}, []);
+    registerSW();
+  }, []);
 
   useEffect(() => {
     const callProfile = async () => {
       try {
         const response = await axiosInstance.get(API.profileUrl);
-        localStorage.setItem("profile", JSON.stringify(response.data));
+        localStorage.setItem(
+          "profile", 
+          JSON.stringify(response.data)
+        );
         connectSocket();
       } catch (error) {
         console.error("Error fetching profile:", error);
@@ -55,13 +52,13 @@ function App() {
   return (
     <main className="w-full flex h-screen">
       
-      {!isAuthPage && (
-        <LeftMenuHeader />
+      {!isAuthPage  && (
+        <LeftMenuHeader selectedChat={selectedChat}/>
       )}
       <ProtectedRoute>
         <Routes>
           <Route path="/" element={<Navigate to="/chats" replace />} />
-          <Route path="/chats" element={<Chats />} />
+          <Route path="/chats" element={<Chats setIsSelectedChat={setIsSelectedChat}/>} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/login" element={<Login />} />
