@@ -13,6 +13,7 @@ export type Message = {
     senderId: string,
     receiverId: string,
     message: string,
+    isRead: boolean,
     createdAt: string,
     updatedAt: string,
 }

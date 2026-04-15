@@ -1,5 +1,9 @@
-import React from 'react'
-import { User } from '../../types/UserType'
+import React, { useEffect, useState } from 'react'
+import { Message, User } from '../../types/UserType'
+import axiosInstance from '../../lib/axios';
+import { API } from '../../config/api';
+import { toast, Toaster } from 'sonner';
+import { socket } from '../../socket/socket';
 
 type Props = {
   user?: User;
@@ -7,6 +11,58 @@ type Props = {
 };
 
 function ChatItemComponent({ user, setSelectedChat }: Props) {
+  const [unreadChats, setUnreadChats] = useState<number | undefined>();
+
+  useEffect(() => {
+    const callAsyncMessages = async() => {
+      try {
+        const response = await axiosInstance.get(API.getAllMessages, {
+          params: { receiverId: user?.id },
+        });
+
+        if(response.data) {
+          const unreadCount = response.data.filter((message: Message) => 
+            message.senderId === user?.id && !message.isRead
+          ).length;
+
+          setUnreadChats(unreadCount);
+        }
+      } catch (error: any) {
+        toast.error(error.response?.data.message)
+      };
+    };
+    callAsyncMessages();
+  }, []);
+
+  useEffect(() => {
+    if(!user!.id) return;
+
+    const handler = (newMessage: Message) => {
+      if (
+        newMessage.senderId === user?.id &&
+        !newMessage.isRead
+      ) {
+        setUnreadChats((prev) => (prev ?? 0) + 1);
+      }
+    };
+
+    socket.on("message-added", handler);
+
+    return () => {
+      socket.off("message-added", handler);
+    };
+  });
+
+  const readMessages = async() => {
+    const response = await axiosInstance.post(API.readMessagesUrl, {
+      receiverId: user?.id,
+    });
+
+    if(response.data) {
+      setUnreadChats(0)
+    }
+  }
+
   return (
     <>
       <style>{`
@@ -69,7 +125,12 @@ function ChatItemComponent({ user, setSelectedChat }: Props) {
         }
       `}</style>
 
-      <div className="ci-row" onClick={() => setSelectedChat(user)}>
+      <div 
+        className="ci-row" 
+        onClick={() => {
+          setSelectedChat(user)
+          readMessages()
+        }}>
         <div className="ci-avatar-wrap">
           <div className="ci-avatar" />
           {
@@ -83,7 +144,23 @@ function ChatItemComponent({ user, setSelectedChat }: Props) {
           <p className="ci-name">{user?.username}</p>
           <p className="ci-sub">{user?.email}</p>
         </div>
+        
+        {
+          unreadChats !== 0 && (
+            <span className={`w-[20px] h-[20px] 
+            rounded-full bg-white flex items-center justify-center 
+            text-black 
+            ${unreadChats! > 9 ? 'text-[12px]' : 'text-[14px]'
+            } 
+            font-[700]`}>
+              {
+                unreadChats! > 99 ? '99+' : unreadChats
+              }
+            </span>
+          )
+        }
       </div>
+      <Toaster richColors/>
     </>
   );
 }

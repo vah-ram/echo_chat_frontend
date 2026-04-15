@@ -7,6 +7,7 @@ export const API = {
     addMessage: `${BASE_URL}/message/add-message`,
     getAllMessages: `${BASE_URL}/user/all-messages`,
     getContacts: `${BASE_URL}/user/get-contacts`,
+    readMessagesUrl: `${BASE_URL}/message/read-messages`,
     registerUrl: `${BASE_URL}/auth/register`,
     loginUrl: `${BASE_URL}/auth/login`,
     verifyEmailUrl: `${BASE_URL}/auth/verify-email`,
