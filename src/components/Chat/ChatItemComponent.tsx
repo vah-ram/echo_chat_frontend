@@ -32,10 +32,10 @@ function ChatItemComponent({ user, setSelectedChat }: Props) {
       };
     };
     callAsyncMessages();
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
-    if(!user!.id) return;
+    if(!user?.id) return;
 
     const handler = (newMessage: Message) => {
       if (
