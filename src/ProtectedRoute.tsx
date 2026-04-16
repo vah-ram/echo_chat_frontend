@@ -5,7 +5,7 @@ const PUBLIC_PATHS = ['/login', '/register'];
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
 
-  if (PUBLIC_PATHS.some((path) => pathname.startsWith(path))) {
+  if (PUBLIC_PATHS.includes(pathname)) {
     return <>{children}</>;
   }
 

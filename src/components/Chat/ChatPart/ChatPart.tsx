@@ -14,13 +14,16 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
   const soundReceiveRef = useRef<HTMLAudioElement>(null);
   const soundSendRef = useRef<HTMLAudioElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<any>(null);
+
   const profile = JSON.parse(localStorage.getItem("profile") || "{}");
   const [message, setMessage] = useState("");
   const [chats, setChats] = useState<Message[]>([]);
+  const [isTyping, setIsTyping] = useState<boolean>(false)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chats]);
+  }, [chats, isTyping]);
 
   const addMessage = async () => {
     if (!message) return;
@@ -59,8 +62,43 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
       soundReceiveRef?.current?.play();
       setChats((prev) => [...prev, newMessage]);
     });
-    return () => { socket.off("message-added"); };
+
+    socket.on('typing', ({ senderId }) => {
+      if (selectedChat?._id === senderId) {
+        setIsTyping(true);
+      }
+    });
+
+    socket.on('stop-typing', ({ senderId }) => {
+      if (selectedChat?._id === senderId) {
+        setIsTyping(false);
+      }
+    });
+
+    return () => { 
+      socket.off('typing', () => setIsTyping(false))
+      socket.off("message-added");
+      socket.off('stop-typing')
+    };
   });
+
+  const typing = () => {
+    socket.emit("typing", {
+      typerId: profile?.id,
+      receiverId: selectedChat.id,
+    });
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      socket.emit("stop-typing", {
+        typerId: profile?.id,
+        receiverId: selectedChat.id,
+      });
+    }, 1000);
+  };
 
   return (
     <>
@@ -127,6 +165,10 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
           display: flex;
           align-items: center;
           gap: 5px;
+        }
+        .cp-status.typing {
+          opacity: .5;
+          animation: anim_type 2s ease infinite;
         }
         .cp-status::before {
           content: '';
@@ -279,6 +321,54 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
           background: #839dff;
           box-shadow: 0 0 26px rgba(108,140,255,0.38);
         }
+
+        @keyframes anim_type {
+          0% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
+          90% {
+            opacity: 1;
+          }
+          100% {
+            opacity: 1;
+          }
+        }
+
+        .typing {
+          display: flex;
+          gap: 4px;
+        }
+
+        .typing span {
+          width: 6px;
+          height: 6px;
+          background: #999;
+          border-radius: 50%;
+          animation: bounce 1.2s infinite;
+        }
+
+        .typing span:nth-child(2) {
+          animation-delay: 0.2s;
+        }
+
+        .typing span:nth-child(3) {
+          animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+          0%, 80%, 100% {
+            opacity: 0.3;
+            transform: translateY(0);
+          }
+          40% {
+            opacity: 1;
+            transform: translateY(-4px);
+          }
+        }
+
         .cp-send-btn:active { transform: scale(0.95); }
       `}</style>
 
@@ -297,7 +387,11 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
               <span className="cp-username">{selectedChat?.username}</span>
               {
                 selectedChat?.isOnline ? (
-                  <span className="cp-status">Active now</span>
+                  <span className={`cp-status ${isTyping && 'typing'}`}>
+                    {
+                      isTyping ? "Typing ..." : "Active now"
+                    }
+                  </span>
                 ) : (
                   <span className="cp-status-not-active">
                     Last seen recently
@@ -314,7 +408,7 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
           </button>
         </header>
 
-        <div className="cp-messages px-5 py-4 max-md:px-3">
+        <div className={`cp-messages px-5 py-4 max-md:px-3 relative`}>
           {chats.map((chat: any) => (
             <div
               key={chat?.id}
@@ -326,12 +420,27 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
               </div>
             </div>
           ))}
-          <div ref={bottomRef} />
+          {isTyping && (
+            <div className="cp-msg-row cp-msg-row--theirs">
+              <div className="cp-msg-avatar" />
+              <div className="cp-bubble cp-bubble--theirs">
+                <div className="typing">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+            </div>
+          )}
+          <div ref={bottomRef}/>
         </div>
 
         <form
           className="cp-footer"
-          onSubmit={(e) => { e.preventDefault(); addMessage(); }}
+          onSubmit={(e) => { 
+            e.preventDefault(); 
+            addMessage();
+          }}
         >
           <button type="button" className="cp-icon-btn cp-icon-btn--desktop">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -355,7 +464,10 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
               value={message}
               placeholder="Type a message…"
               className="cp-input"
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={(e) => {
+                setMessage(e.target.value)
+                typing()
+              }}
             />
           </div>
 

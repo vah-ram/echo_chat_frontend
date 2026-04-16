@@ -58,6 +58,16 @@ function Chats({setIsSelectedChat}: {setIsSelectedChat: (chat: User | null) => v
     };
   }, []);
 
+  useEffect(() => {
+    socket.on('contact-added', (contact) => {
+      setContacts(prev => [...prev, contact]);
+    });
+
+    return () => {
+      socket.off('contact-added');
+    };
+  }, [socket])
+
   return (
     <>
       <style>{`

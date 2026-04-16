@@ -15,6 +15,8 @@ import { User } from './types/UserType';
 function App() {
   const location = useLocation();
 
+  const access = localStorage.getItem("accessToken")
+
   const isAuthPage = location.pathname === "/login" || location.pathname === "/register";
   const [selectedChat, setIsSelectedChat] = useState<User | null>(null);
   
@@ -47,7 +49,7 @@ function App() {
       }
     };
     callProfile();
-  }); 
+  }, [access]); 
 
   return (
     <main className="w-full flex h-screen">
