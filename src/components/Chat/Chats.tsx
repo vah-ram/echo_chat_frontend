@@ -66,7 +66,7 @@ function Chats({setIsSelectedChat}: {setIsSelectedChat: (chat: User | null) => v
     return () => {
       socket.off('contact-added');
     };
-  }, [socket])
+  }, [])
 
   return (
     <>
