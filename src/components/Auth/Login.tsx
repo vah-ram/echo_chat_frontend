@@ -3,8 +3,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast, Toaster } from "sonner";
 import { API } from "../../config/api";
-import axiosInstance from "../../lib/axios";
-import { getDeviceId, getFcmToken } from "../../fcm/get-fcm";
 
 function Login() {
   const navigate = useNavigate();
@@ -31,24 +29,7 @@ function Login() {
 
       if(response.data) {
         localStorage.setItem("accessToken", response?.data?.accessToken);
-
-        const fcmToken = await getFcmToken();
-        const deviceId = getDeviceId();
-
-        console.log(fcmToken)
-        console.log(deviceId)
-
-        if(fcmToken) {
-          try {
-            await axiosInstance.post(API.setFcmtokenUrl, { 
-              fcmToken,
-              platform: "web",
-              deviceId
-            });
-          } catch (error) {
-            console.error("Error setting FCM token:", error);
-          }
-        }
+        
         navigate('/')
       } else {
         return;

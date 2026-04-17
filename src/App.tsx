@@ -11,6 +11,45 @@ import { API } from './config/api';
 import { connectSocket } from './socket/socket';
 import ProtectedRoute from './ProtectedRoute';
 import { User } from './types/UserType';
+import { PushNotifications } from '@capacitor/push-notifications';
+import { getDeviceId } from './fcm/get-fcm';
+
+const initPush = async () => {
+  const access = localStorage.getItem("accessToken")
+
+  if(!access) return;
+
+  const permission = await PushNotifications.requestPermissions();
+
+  if (permission.receive === 'granted') {
+    await PushNotifications.register();
+  }
+
+  PushNotifications.addListener('registration', token => {
+    const deviceId = getDeviceId();
+
+    const callFcm = async() => {
+      try {
+        await axiosInstance.post(API.setFcmtokenUrl, { 
+          fcmToken: token.value,
+          platform: "web",
+          deviceId
+        });
+      } catch (error) {
+        console.error("Error setting FCM token:", error);
+      }
+    };
+    callFcm()
+  });
+
+  PushNotifications.addListener('registrationError', err => {
+    console.error(err);
+  });
+
+  PushNotifications.addListener('pushNotificationReceived', notification => {
+    console.log(JSON.stringify(notification));
+  });
+};
 
 function App() {
   const location = useLocation();
@@ -20,6 +59,14 @@ function App() {
   const isAuthPage = location.pathname === "/login" || location.pathname === "/register";
   const [selectedChat, setIsSelectedChat] = useState<User | null>(null);
   
+  useEffect(() => {
+    initPush()
+  }, []);
+
+  useEffect(() => {
+    initPush()
+  });
+
   useEffect(() => {
     const registerSW = async () => {
       if ('serviceWorker' in navigator) {
