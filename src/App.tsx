@@ -13,6 +13,7 @@ import ProtectedRoute from './ProtectedRoute';
 import { User } from './types/UserType';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { getDeviceId } from './fcm/get-fcm';
+import { Capacitor } from '@capacitor/core';
 
 const initPush = async () => {
   const access = localStorage.getItem("accessToken")
@@ -59,13 +60,11 @@ function App() {
   const isAuthPage = location.pathname === "/login" || location.pathname === "/register";
   const [selectedChat, setIsSelectedChat] = useState<User | null>(null);
   
-  useEffect(() => {
-    initPush()
+   useEffect(() => {
+    if (Capacitor.getPlatform() !== 'web') {
+      initPush();
+    }
   }, []);
-
-  useEffect(() => {
-    initPush()
-  });
 
   useEffect(() => {
     const registerSW = async () => {

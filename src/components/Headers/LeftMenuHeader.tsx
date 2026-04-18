@@ -81,24 +81,27 @@ function LeftMenuHeader({ selectedChat }: Props) {
           color: #ef4444;
         }
 
-        /* ── Mobile ── */
         @media (max-width: 768px) {
           .lmh-root {
             width: auto;
             height: auto;
-            background: var(--bg-sidebar);
-            border-right: none;
-            border: 1px solid var(--border);
-            border-radius: 16px;
+            background: rgba(18, 18, 28, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 28px;
             flex-direction: row;
             justify-content: center;
-            padding: 6px 10px;
+            padding: 8px 12px;
             position: fixed;
-            bottom: 12px;
+            bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 100;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            box-shadow:
+              0 8px 32px rgba(0,0,0,0.4),
+              0 2px 8px rgba(0,0,0,0.3),
+              inset 0 1px 0 rgba(255,255,255,0.06);
           }
 
           .lmh-root--hidden {
@@ -112,23 +115,46 @@ function LeftMenuHeader({ selectedChat }: Props) {
 
           .lmh-nav {
             flex-direction: row;
-            gap: 2px;
+            gap: 4px;
           }
 
           .lmh-nav-btn {
-            width: 38px;
-            height: 36px;
-            border-radius: 10px;
+            width: 52px;
+            height: 44px;
+            border-radius: 18px;
+            transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
           }
 
           .lmh-nav-btn svg {
-            width: 17px;
-            height: 17px;
+            width: 20px;
+            height: 20px;
+          }
+
+          .lmh-nav-btn--active {
+            background: var(--accent, #5b5bf6);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(91,91,246,0.45);
+            transform: translateY(-1px);
+          }
+
+          .lmh-nav-btn--inactive {
+            background: transparent;
+            color: rgba(255,255,255,0.35);
+          }
+
+          .lmh-nav-btn--inactive:hover {
+            background: rgba(255,255,255,0.07);
+            color: rgba(255,255,255,0.7);
+            transform: translateY(-1px);
+          }
+
+          .lmh-nav-btn--inactive:active {
+            transform: scale(0.93);
           }
         }
       `}</style>
 
-      <header className={`lmh-root ${selectedChat ? ' lmh-root--hidden' : ''}`}>
+      <header className={`lmh-root${selectedChat ? ' lmh-root--hidden' : ''}`}>
         <div className="lmh-logo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -176,9 +202,9 @@ function LeftMenuHeader({ selectedChat }: Props) {
         <button
           className="lmh-logout-btn"
           title="Log out"
-          onClick={() => { 
+          onClick={() => {
             localStorage.removeItem('accessToken');
-            localStorage.removeItem('profile')
+            localStorage.removeItem('profile');
             window.location.href = 'login';
           }}
         >
