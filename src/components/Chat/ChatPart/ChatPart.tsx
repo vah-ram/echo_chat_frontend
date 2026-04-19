@@ -478,7 +478,7 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
             <div
               key={chat?.id}
               className={`cp-msg-row ${
-                chat.senderId === profile?.id ? 
+                chat?.senderId === profile?.id ? 
                 "cp-msg-row--mine" :
                 "cp-msg-row--theirs"}`}
             >

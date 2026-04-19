@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import axiosInstance from '../../../lib/axios'
-import { API } from '../../../config/api'
 
 interface ContextMenuItem {
   icon: string
