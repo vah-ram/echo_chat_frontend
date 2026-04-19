@@ -8,10 +8,34 @@ import { socket } from '../../socket/socket';
 type Props = {
   user?: User;
   setSelectedChat: React.Dispatch<React.SetStateAction<any>>;
+  allChats?: Message[];
 };
 
-function ChatItemComponent({ user, setSelectedChat }: Props) {
+function ChatItemComponent({ user, setSelectedChat, allChats }: Props) {
   const [unreadChats, setUnreadChats] = useState<number | undefined>();
+  const [lastChat, setLastChat] = useState<string>('');
+  const [lastChatFrom, setLastChatFrom] = useState<string>('');
+
+  useEffect(() => {
+    const callAsync = async () => {
+      try {
+        const response = await axiosInstance.get(API.getAllMessages, {
+          params: { receiverId: user?.id },
+        });
+        if (response.data && response.data.length > 0) {
+          setLastChat(response.data[response.data.length - 1].message);
+          setLastChatFrom(
+            response.data[response.data.length - 1].senderId === user?.id
+              ? user?.username || ""
+              : "Ես"
+          );
+        }
+      } catch (err: any) {
+        console.log(err.response?.data);
+      }
+    };
+    callAsync();
+  }, [user?.id, unreadChats, allChats]);
 
   useEffect(() => {
     const callAsyncMessages = async() => {
@@ -85,7 +109,6 @@ function ChatItemComponent({ user, setSelectedChat }: Props) {
         .ci-avatar {
           width: 46px; height: 46px;
           border-radius: 50%;
-          background-image: url('https://i.pinimg.com/originals/ac/14/6d/ac146dfb665377eb5cef0152a9e948a4.jpg');
           background-size: cover;
           background-position: center;
           border: 2px solid var(--border-strong);
@@ -132,7 +155,12 @@ function ChatItemComponent({ user, setSelectedChat }: Props) {
           readMessages()
         }}>
         <div className="ci-avatar-wrap">
-          <div className="ci-avatar" />
+          <div 
+            className="ci-avatar"
+            style={{
+              backgroundImage: 
+              `url(${user?.profileImageUrl !== undefined ?  user?.profileImageUrl : '/icones/user-icon.jpg'})`,
+            }} />
           {
             user?.isOnline ? (
               <span className="ci-dot" />
@@ -142,7 +170,9 @@ function ChatItemComponent({ user, setSelectedChat }: Props) {
 
         <div className="ci-info">
           <p className="ci-name">{user?.username}</p>
-          <p className="ci-sub">{user?.email}</p>
+          <p className="ci-sub">
+            {lastChatFrom ? `${lastChatFrom}: ` : ''}{lastChat ? lastChat : ""}
+          </p>
         </div>
         
         {

@@ -6,14 +6,15 @@ export type User = {
     username: string,
     profileImageUrl: string,
     isOnline?: boolean;
+    phone: string;
 };
-
 
 export type Message = {
     senderId: string,
     receiverId: string,
     message: string,
     isRead: boolean,
+    fileUrl?: string,
     createdAt: string,
     updatedAt: string,
 }

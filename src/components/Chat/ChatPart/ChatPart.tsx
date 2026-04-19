@@ -2,21 +2,25 @@ import React, { useEffect, useRef, useState } from "react";
 import { toast, Toaster } from "sonner";
 import axiosInstance from "../../../lib/axios";
 import { API } from "../../../config/api";
-import { Message } from "../../../types/UserType";
+import { Message, User } from "../../../types/UserType";
 import { socket } from "../../../socket/socket";
+import ChatMessage from "./ChatMessage";
 
 type Props = {
   selectedChat: any;
   setSelectedChat: React.Dispatch<React.SetStateAction<any>>;
+  setAllChats: React.Dispatch<React.SetStateAction<any[]>>;
+  profile: User | null;
 };
 
-function ChatPart({ selectedChat, setSelectedChat }: Props) {
+function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [chatImage, setChatImage] = useState<File | null>(null);
   const soundReceiveRef = useRef<HTMLAudioElement>(null);
   const soundSendRef = useRef<HTMLAudioElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<any>(null);
 
-  const profile = JSON.parse(localStorage.getItem("profile") || "{}");
   const [message, setMessage] = useState("");
   const [chats, setChats] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState<boolean>(false)
@@ -29,13 +33,14 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
     if (!message) return;
     try {
       const response = await axiosInstance.post(API.addMessage, {
-        senderId: profile.id,
+        senderId: profile?.id,
         receiverId: selectedChat.id,
         message,
       });
       if (response.data) {
         soundSendRef?.current?.play()
         setChats((prev) => [...prev, response.data]);
+        setAllChats((prev) => [...prev, response.data]);
         setMessage("");
       }
     } catch (err: any) {
@@ -100,6 +105,58 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
     }, 1000);
   };
 
+  const deleteMessageFunc = async (id: any) => {
+    try {
+      const res = await axiosInstance.delete(API.deleteMessage, {
+        data: { messageId: id }
+      });
+
+      if (res.data) {
+        const updatedChats = chats.filter((chat: any) => chat.id !== id);
+        setChats(updatedChats);
+      }
+    } catch (err: any) {
+      console.log(err?.response?.data.message);
+    }
+  };
+
+  socket.on('delete-chat', (messageId: string) => {
+    const updatedChats = chats.filter((chat: any) => chat.id !== messageId);
+    setChats(updatedChats);
+  });
+
+  useEffect(() => {
+		const callAsync = async() => {
+			if(!chatImage) return;
+      if(!profile) return;
+
+			const formData = new FormData();
+			formData.append('file', chatImage);
+      formData.append('senderId', profile?.id);
+      formData.append('receiverId', selectedChat?.id);
+
+			try {
+				const res = await axiosInstance.post(
+				API.addImage,
+					formData,
+					{
+						headers: {
+							'Content-Type': 'multipart/form-data',
+					},
+						withCredentials: true,
+					}
+				);
+
+        if(res.data) {
+          setChats((prev) => [...prev, res.data]);
+        }
+			} catch (err) {
+				console.error(err);
+			}
+		};
+		callAsync();
+	}, [chatImage]);
+
   return (
     <>
       <style>{`
@@ -141,7 +198,6 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
         .cp-avatar {
           width: 44px; height: 44px;
           border-radius: 50%;
-          background-image: url('https://i.pinimg.com/originals/ac/14/6d/ac146dfb665377eb5cef0152a9e948a4.jpg');
           background-size: cover;
           background-position: center;
           border: 2px solid var(--border-strong);
@@ -222,7 +278,6 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
         .cp-msg-avatar {
           width: 30px; height: 30px;
           border-radius: 50%;
-          background-image: url('https://i.pinimg.com/originals/ac/14/6d/ac146dfb665377eb5cef0152a9e948a4.jpg');
           background-size: cover; background-position: center;
           flex-shrink: 0;
           border: 1.5px solid var(--border-strong);
@@ -372,7 +427,12 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
         .cp-send-btn:active { transform: scale(0.95); }
       `}</style>
 
-      <section className="cp-root">
+      <section 
+        className="cp-root"
+        onContextMenu={(e) => {
+          e.stopPropagation()
+          e.preventDefault()
+        }}>
         <header className="cp-header">
           <div className="cp-header-left">
             <button className="cp-back-btn" onClick={() => setSelectedChat(null)}>
@@ -381,7 +441,12 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
               </svg>
             </button>
 
-            <div className="cp-avatar" />
+            <div 
+              className="cp-avatar"
+              style={{
+                backgroundImage: 
+                `url(${selectedChat?.profileImageUrl !== undefined ?  selectedChat?.profileImageUrl : '/icones/user-icon.jpg'})`,
+              }} />
 
             <div className="cp-user-info">
               <span className="cp-username">{selectedChat?.username}</span>
@@ -412,17 +477,27 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
           {chats.map((chat: any) => (
             <div
               key={chat?.id}
-              className={`cp-msg-row ${chat.senderId === profile.id ? "cp-msg-row--mine" : "cp-msg-row--theirs"}`}
+              className={`cp-msg-row ${
+                chat.senderId === profile?.id ? 
+                "cp-msg-row--mine" :
+                "cp-msg-row--theirs"}`}
             >
-              <div className="cp-msg-avatar" />
-              <div className={`cp-bubble ${chat.senderId === profile.id ? "cp-bubble--mine" : "cp-bubble--theirs"}`}>
-                {chat.message}
-              </div>
+              <ChatMessage 
+                chat={chat}
+                profile={profile}
+                selectedChat={selectedChat}
+                deleteMessageFunc={deleteMessageFunc}/>
             </div>
           ))}
+          
           {isTyping && (
             <div className="cp-msg-row cp-msg-row--theirs">
-              <div className="cp-msg-avatar" />
+              <div
+                className="cp-msg-avatar"
+                style={{ backgroundImage: `url(${
+                  selectedChat?.profileImageUrl ?? '/icones/user-icon.jpg'
+                })` }}
+              />
               <div className="cp-bubble cp-bubble--theirs">
                 <div className="typing">
                   <span></span>
@@ -442,11 +517,25 @@ function ChatPart({ selectedChat, setSelectedChat }: Props) {
             addMessage();
           }}
         >
-          <button type="button" className="cp-icon-btn cp-icon-btn--desktop">
+          <button 
+            type="button" 
+            className="cp-icon-btn"
+            onClick={() => fileRef.current?.click()}
+            >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M13.234 20.252 21 12.3" />
               <path d="m16 6-8.414 8.586a2 2 0 0 0 0 2.828 2 2 0 0 0 2.828 0l8.414-8.586a4 4 0 0 0 0-5.656 4 4 0 0 0-5.656 0l-8.415 8.585a6 6 0 1 0 8.486 8.486" />
             </svg>
+            <input 
+                ref={fileRef} 
+                type="file" 
+                accept=".jpg,.jpeg,.png,.webp"
+                style={{ display: 'none' }} 
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0] && setChatImage) {
+                    setChatImage(e.target.files[0]);
+                  }
+                }}/>
           </button>
 
           <button type="button" className="cp-icon-btn cp-icon-btn--desktop">

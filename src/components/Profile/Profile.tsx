@@ -1,30 +1,58 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import axiosInstance from '../../lib/axios';
+import { API } from '../../config/api';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
 
 function Profile() {
-  const [name, setName] = useState('John Doe')
-  const [email] = useState('john.doe@example.com')
+  const [name, setName] = useState<string | undefined>('');
+  const [email, setEmail] = useState<string | undefined>('')
   const [phone, setPhone] = useState('+1 (555) 123-4567')
-  const [bio, setBio] = useState('Product designer and coffee enthusiast')
-  const [avatar, setAvatar] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const profile = useSelector((state: RootState) => state.auth.user);
 
-  const initials = name.trim().split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-
-  const handleAvatarChange = (e: any) => {
-    const file = e.target.files[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = () => setAvatar(reader.result as string)
-      reader.readAsDataURL(file)
-    }
-  }
+  const initials = profile?.username.trim().split(' ').map((w: any)=> w[0]).join('').slice(0, 2).toUpperCase()
 
   const handleLogout = () => {
     localStorage.removeItem('deviceId')
     localStorage.removeItem('accessToken')
-    localStorage.removeItem('profile')
     window.location.href = 'login'
   }
+
+  useEffect(() => {
+		const callAsync = async() => {
+			if(!profileImage) return;
+
+			const formData = new FormData();
+			formData.append('file', profileImage);
+
+			try {
+				const res = await axiosInstance.post(
+				API.addProfileImage,
+					formData,
+					{
+						headers: {
+							'Content-Type': 'multipart/form-data',
+					},
+						withCredentials: true,
+					}
+				);
+				
+				if (res.data) {
+          const updatedProfile = {
+            ...profile,
+            profileImageUrl: res.data.imageUrl
+          };
+
+          window.location.reload();
+        }
+			} catch (err) {
+				console.error(err);
+			}
+		};
+		callAsync();
+	}, [profileImage]);
 
   return (
     <>
@@ -356,12 +384,11 @@ function Profile() {
 
       <div className="profile-page">
         <h1 className="profile-title">Account Settings</h1>
-
         <div className="profile-card">
           <div className="profile-avatar-row">
             <div className="profile-avatar-wrap" onClick={() => fileRef.current?.click()}>
-              {avatar
-                ? <img src={avatar} alt="avatar" className="profile-avatar-img" />
+              {profile?.profileImageUrl !== undefined 
+                ? <img src={profile.profileImageUrl} alt="avatar" className="profile-avatar-img" />
                 : <div className="profile-avatar-initials">{initials}</div>
               }
               <div className="profile-avatar-cam">
@@ -370,7 +397,16 @@ function Profile() {
                   <circle cx="12" cy="13" r="4"/>
                 </svg>
               </div>
-              <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
+              <input 
+                ref={fileRef} 
+                type="file" 
+                accept=".jpg,.jpeg,.png,.webp"
+                style={{ display: 'none' }} 
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0] && setProfileImage) {
+                    setProfileImage(e.target.files[0]);
+                  }
+                }}/>
             </div>
             <div className="profile-avatar-label">
               <strong>Profile Photo</strong>
@@ -381,7 +417,11 @@ function Profile() {
           <div className="profile-field">
             <label>Full Name</label>
             <div className="profile-input-wrap">
-              <input className="profile-input" value={name} onChange={e => setName(e.target.value)} placeholder="Full Name" />
+              <input 
+                className="profile-input" 
+                value={profile?.username} 
+                onChange={e => setName(e.target.value)} 
+                placeholder="Full Name" />
             </div>
           </div>
 
@@ -394,7 +434,11 @@ function Profile() {
                   <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
                 </svg>
               </span>
-              <input className="profile-input has-icon" value={email} readOnly placeholder="Email" />
+              <input 
+                className="profile-input has-icon" 
+                value={profile?.email} 
+                onChange={e => setEmail(e.target.value)} 
+                readOnly placeholder="Email" />
             </div>
           </div>
 
@@ -406,13 +450,12 @@ function Profile() {
                   <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.61 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.08 6.08l.97-.97a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
                 </svg>
               </span>
-              <input className="profile-input has-icon" value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone Number" />
+              <input 
+                className="profile-input has-icon" 
+                value={profile?.phone} 
+                onChange={e => setPhone(e.target.value)} 
+                placeholder="Phone Number" />
             </div>
-          </div>
-
-          <div className="profile-field">
-            <label>Bio</label>
-            <textarea className="profile-input" value={bio} onChange={e => setBio(e.target.value)} placeholder="Tell us about yourself" />
           </div>
 
           <div className="profile-actions">

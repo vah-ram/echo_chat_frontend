@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import ChatItemComponent from './ChatItemComponent';
 import SearchUserComponent from './SearchUserComponent'
-import { User } from '../../types/UserType';
+import { Message, User } from '../../types/UserType';
 import ChatPart from './ChatPart/ChatPart';
 import { API } from '../../config/api';
 import axiosInstance from '../../lib/axios';
@@ -11,10 +11,17 @@ type OnlinePayload = {
   userId: string;
 };
 
-function Chats({setIsSelectedChat}: {setIsSelectedChat: (chat: User | null) => void}) {
+function Chats({
+    setIsSelectedChat,
+    profile
+  }: {
+    setIsSelectedChat: (chat: User | null) => void;
+    profile: User | null;
+  }) {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedChat, setSelectedChat] = useState<User | null>(null);
   const [contacts, setContacts] = useState<User[]>([]);
+  const [allChats, setAllChats] = useState<Message[]>([]);
 
   useEffect(() => {
     const callSync = async () => {
@@ -227,7 +234,7 @@ function Chats({setIsSelectedChat}: {setIsSelectedChat: (chat: User | null) => v
         .chat-list {
           flex: 1;
           overflow-y: auto;
-          padding: 6px 10px 12px;
+          padding: 6px 10px 100px;
           scrollbar-width: thin;
           scrollbar-color: var(--bg-elevated) transparent;
         }
@@ -310,7 +317,6 @@ function Chats({setIsSelectedChat}: {setIsSelectedChat: (chat: User | null) => v
       `}</style>
 
       <section className="chats-root">
-
         <div
           className={[
             'sidebar',
@@ -366,13 +372,14 @@ function Chats({setIsSelectedChat}: {setIsSelectedChat: (chat: User | null) => v
 
               <div className="sidebar-divider" />
 
-              <div className="chat-list">
+              <div className="chat-list overflow-y-scroll">
                 {
                   contacts?.map((contact: any) => (
                     <ChatItemComponent
                       key={contact.id}
                       user={contact}
                       setSelectedChat={setSelectedChat}
+                      allChats={allChats}
                     />
                   ))
                 }
@@ -392,6 +399,8 @@ function Chats({setIsSelectedChat}: {setIsSelectedChat: (chat: User | null) => v
             <ChatPart
               selectedChat={selectedChat}
               setSelectedChat={setSelectedChat}
+              setAllChats={setAllChats}
+              profile={profile}
             />
           ) : (
             <div className="empty-state">

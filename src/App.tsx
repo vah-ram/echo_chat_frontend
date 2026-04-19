@@ -14,11 +14,13 @@ import { User } from './types/UserType';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { getDeviceId } from './fcm/get-fcm';
 import { Capacitor } from '@capacitor/core';
+import { Provider, useDispatch, useSelector } from "react-redux";
+import { setUser } from './store/authSlice';
+import { RootState, store } from './store/store';
 
 const initPush = async () => {
-  const access = localStorage.getItem("accessToken")
-
-  if(!access) return;
+  const access = localStorage.getItem("accessToken");
+  if (!access) return;
 
   const permission = await PushNotifications.requestPermissions();
 
@@ -29,9 +31,9 @@ const initPush = async () => {
   PushNotifications.addListener('registration', token => {
     const deviceId = getDeviceId();
 
-    const callFcm = async() => {
+    const callFcm = async () => {
       try {
-        await axiosInstance.post(API.setFcmtokenUrl, { 
+        await axiosInstance.post(API.setFcmtokenUrl, {
           fcmToken: token.value,
           platform: "web",
           deviceId
@@ -40,7 +42,8 @@ const initPush = async () => {
         console.error("Error setting FCM token:", error);
       }
     };
-    callFcm()
+
+    callFcm();
   });
 
   PushNotifications.addListener('registrationError', err => {
@@ -52,28 +55,31 @@ const initPush = async () => {
   });
 };
 
-function App() {
+function AppContent() {
+  const profile = useSelector((state: RootState) => state.auth.user);
   const location = useLocation();
+  const dispatch = useDispatch();
 
-  const access = localStorage.getItem("accessToken")
+  useEffect(() => connectSocket());
 
-  const isAuthPage = location.pathname === "/login" || location.pathname === "/register";
+  const isAuthPage =
+    location.pathname === "/login" ||
+    location.pathname === "/register";
+
   const [selectedChat, setIsSelectedChat] = useState<User | null>(null);
-  
-   useEffect(() => {
+
+  useEffect(() => {
     if (Capacitor.getPlatform() !== 'web') {
       initPush();
     }
   }, []);
-
   useEffect(() => {
     const registerSW = async () => {
       if ('serviceWorker' in navigator) {
         try {
-          const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-          console.log('✅ SW registered:', registration);
+          await navigator.serviceWorker.register('/firebase-messaging-sw.js');
         } catch (err) {
-          console.error('❌ SW registration failed:', err);
+          console.error('SW registration failed:', err);
         }
       }
     };
@@ -82,31 +88,32 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const callProfile = async () => {
+    const fetchCurrentUser = async () => {
       try {
-        const response = await axiosInstance.get(API.profileUrl);
-        localStorage.setItem(
-          "profile", 
-          JSON.stringify(response.data)
-        );
-        connectSocket();
-      } catch (error) {
-        console.error("Error fetching profile:", error);
+        const res = await axiosInstance.get(API.profileUrl);
+        dispatch(setUser(res.data));
+      } catch (err) {
+        console.error(err);
       }
     };
-    callProfile();
-  }, [access]); 
+
+    fetchCurrentUser();
+  }, [dispatch]);
 
   return (
     <main className="w-full flex h-screen">
-      
-      {!isAuthPage  && (
-        <LeftMenuHeader selectedChat={selectedChat}/>
+      {!isAuthPage && (
+        <LeftMenuHeader selectedChat={selectedChat} />
       )}
+
       <ProtectedRoute>
         <Routes>
           <Route path="/" element={<Navigate to="/chats" replace />} />
-          <Route path="/chats" element={<Chats setIsSelectedChat={setIsSelectedChat}/>} />
+          <Route path="/chats" element={
+            <Chats 
+              setIsSelectedChat={setIsSelectedChat}
+              profile={profile} />
+          } />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/login" element={<Login />} />
@@ -114,6 +121,14 @@ function App() {
         </Routes>
       </ProtectedRoute>
     </main>
+  );
+}
+
+function App() {
+  return (
+    <Provider store={store}>
+      <AppContent />
+    </Provider>
   );
 }
 

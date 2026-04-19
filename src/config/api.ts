@@ -5,6 +5,8 @@ export const API = {
     profileUrl: `${BASE_URL}/user`,
     searchUsers: `${BASE_URL}/user/search-users`,
     addMessage: `${BASE_URL}/message/add-message`,
+    addImage: `${BASE_URL}/message/add-image`,
+    deleteMessage: `${BASE_URL}/message/delete-message`,
     getAllMessages: `${BASE_URL}/user/all-messages`,
     getContacts: `${BASE_URL}/user/get-contacts`,
     readMessagesUrl: `${BASE_URL}/message/read-messages`,
@@ -12,4 +14,5 @@ export const API = {
     loginUrl: `${BASE_URL}/auth/login`,
     verifyEmailUrl: `${BASE_URL}/auth/verify-email`,
     setFcmtokenUrl: `${BASE_URL}/user/add-fcm-token`,
+    addProfileImage: `${BASE_URL}/user/add-profile-image`
 }
