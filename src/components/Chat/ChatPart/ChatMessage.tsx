@@ -7,7 +7,7 @@ interface ContextMenuItem {
   danger?: boolean
 }
 
-function ChatMessage({ profile, chat, selectedChat, deleteMessageFunc }: any) {
+function ChatMessage({ profile, chat, selectedChat, deleteMessageFunc, headerRef }: any) {
   if (!chat) return null;
   
   const isMine = chat?.senderId === profile?.id

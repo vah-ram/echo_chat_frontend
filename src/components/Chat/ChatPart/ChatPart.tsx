@@ -5,6 +5,7 @@ import { API } from "../../../config/api";
 import { Message, User } from "../../../types/UserType";
 import { socket } from "../../../socket/socket";
 import ChatMessage from "./ChatMessage";
+import UserInfoHeader from "./UserInfoHeader";
 
 type Props = {
   selectedChat: any;
@@ -14,20 +15,49 @@ type Props = {
 };
 
 function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props) {
-  const fileRef = useRef<HTMLInputElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
   const [chatImage, setChatImage] = useState<File | null>(null);
   const soundReceiveRef = useRef<HTMLAudioElement>(null);
   const soundSendRef = useRef<HTMLAudioElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<any>(null);
+  const [headerBarActive, setHeaderBarActive] = useState<boolean>(false);
 
   const [message, setMessage] = useState("");
   const [chats, setChats] = useState<Message[]>([]);
-  const [isTyping, setIsTyping] = useState<boolean>(false)
+  const [isTyping, setIsTyping] = useState<boolean>(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  const handleClickOutside = (event: any) => {
+    if (headerRef.current && !headerRef.current.contains(event.target as Node)) {
+      setHeaderBarActive(false);
+    }
+  };
+
+  useEffect(() => {
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chats, isTyping]);
+  }, [chats, isTyping, headerBarActive]);
 
   const addMessage = async () => {
     if (!message) return;
@@ -161,191 +191,337 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
   return (
     <>
       <style>{`
+        * {
+          box-sizing: border-box;
+        }
+
         .cp-root {
           width: 100%;
           height: 100%;
           display: flex;
           flex-direction: column;
-          background: var(--bg-base);
-          font-family: var(--font-body);
+          background: #ffffff;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+          color: #1a1a1a;
         }
 
         .cp-header {
-          height: 68px;
-          padding: 0 20px;
-          border-bottom: 1px solid var(--border);
+          height: 70px;
+          padding: 0 24px;
+          border-bottom: 1px solid #e5e7eb;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          background: var(--bg-sidebar);
+          background: #ffffff;
           flex-shrink: 0;
+          transition: all 0.3s ease;
+          cursor: pointer;
         }
 
-        .cp-header-left { display: flex; align-items: center; gap: 10px; }
+        .cp-header:hover {
+          background: #fafafa;
+        }
+
+        .cp-header-left { 
+          display: flex; 
+          align-items: center; 
+          gap: 12px;
+          flex: 1;
+          min-width: 0;
+        }
 
         .cp-back-btn {
-          width: 36px; height: 36px;
-          border-radius: var(--radius-sm);
-          background: var(--bg-elevated);
-          border: 1px solid var(--border-strong);
-          display: flex; align-items: center; justify-content: center;
+          width: 40px; 
+          height: 40px;
+          border-radius: 10px;
+          background: #f3f4f6;
+          border: none;
+          display: flex; 
+          align-items: center; 
+          justify-content: center;
           cursor: pointer;
-          transition: background 0.18s ease;
-          color: var(--text-secondary);
+          transition: all 0.2s ease;
+          color: #6b7280;
           flex-shrink: 0;
+          padding: 0;
         }
-        .cp-back-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+        .cp-back-btn:hover { 
+          background: #e5e7eb;
+          color: #1a1a1a;
+          transform: translateX(-2px);
+        }
+
+        .cp-back-btn:active {
+          transform: scale(0.95);
+        }
 
         .cp-avatar {
-          width: 44px; height: 44px;
+          width: 48px; 
+          height: 48px;
           border-radius: 50%;
           background-size: cover;
           background-position: center;
-          border: 2px solid var(--border-strong);
+          border: 2px solid #e5e7eb;
           flex-shrink: 0;
+          object-fit: cover;
+          transition: all 0.2s ease;
         }
 
-        .cp-user-info { display: flex; flex-direction: column; gap: 1px; }
+        .cp-avatar:hover {
+          border-color: #d1d5db;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .cp-user-info { 
+          display: flex; 
+          flex-direction: column; 
+          gap: 2px;
+          min-width: 0;
+          flex: 1;
+        }
 
         .cp-username {
-          font-family: var(--font-display);
           font-size: 15px;
-          font-weight: 700;
-          color: var(--text-primary);
+          font-weight: 600;
+          color: #1a1a1a;
           line-height: 1.2;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .cp-status {
-          font-size: 12px;
-          color: #4ade80;
+          font-size: 13px;
+          color: #10b981;
           font-weight: 500;
           display: flex;
           align-items: center;
-          gap: 5px;
+          gap: 6px;
         }
+
         .cp-status.typing {
-          opacity: .5;
+          opacity: 0.8;
           animation: anim_type 2s ease infinite;
         }
+
         .cp-status::before {
           content: '';
-          width: 6px; height: 6px;
+          width: 7px; 
+          height: 7px;
           border-radius: 50%;
-          background: #4ade80;
-          box-shadow: 0 0 6px #4ade80;
+          background: #10b981;
+          box-shadow: 0 0 6px #10b981;
           display: inline-block;
         }
 
         .cp-status-not-active {
-          font-size: 12px;
-          color: gray;
+          font-size: 13px;
+          color: #9ca3af;
           font-weight: 500;
           display: flex;
           align-items: center;
-          gap: 5px;
+          gap: 6px;
+        }
+
+        .cp-status-not-active::before {
+          content: '';
+          width: 7px; 
+          height: 7px;
+          border-radius: 50%;
+          background: #d1d5db;
+          display: inline-block;
         }
 
         .cp-more-btn {
-          width: 38px; height: 38px;
-          border-radius: var(--radius-sm);
-          background: var(--bg-elevated);
-          border: 1px solid var(--border-strong);
-          display: flex; align-items: center; justify-content: center;
+          width: 40px; 
+          height: 40px;
+          border-radius: 10px;
+          background: #f3f4f6;
+          border: none;
+          display: flex; 
+          align-items: center; 
+          justify-content: center;
           cursor: pointer;
-          transition: background 0.18s ease;
-          color: var(--text-secondary);
+          transition: all 0.2s ease;
+          color: #6b7280;
+          flex-shrink: 0;
+          padding: 0;
         }
-        .cp-more-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+        .cp-more-btn:hover { 
+          background: #e5e7eb;
+          color: #1a1a1a;
+        }
+
+        .cp-more-btn:active {
+          transform: scale(0.95);
+        }
 
         .cp-messages {
           flex: 1;
           overflow-y: auto;
           display: flex;
           flex-direction: column;
-          gap: 10px;
-          scrollbar-width: none;
+          gap: 12px;
+          padding: 20px 24px;
+          scrollbar-width: thin;
+          scrollbar-color: #d1d5db #ffffff;
         }
-        .cp-messages::-webkit-scrollbar { display: none; }
+
+        .cp-messages::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .cp-messages::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .cp-messages::-webkit-scrollbar-thumb {
+          background: #d1d5db;
+          border-radius: 4px;
+        }
+
+        .cp-messages::-webkit-scrollbar-thumb:hover {
+          background: #9ca3af;
+        }
 
         .cp-msg-row {
           display: flex;
           align-items: flex-end;
           gap: 8px;
-          max-width: 60%;
+          max-width: 65%;
+          animation: slideIn 0.3s ease;
         }
-        .cp-msg-row--mine    { align-self: flex-end; flex-direction: row-reverse; }
-        .cp-msg-row--theirs  { align-self: flex-start; }
+
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .cp-msg-row--mine { 
+          align-self: flex-end; 
+          flex-direction: row-reverse;
+          max-width: 70%;
+        }
+
+        .cp-msg-row--theirs { 
+          align-self: flex-start;
+          max-width: 65%;
+        }
 
         .cp-msg-avatar {
-          width: 30px; height: 30px;
+          width: 32px; 
+          height: 32px;
           border-radius: 50%;
-          background-size: cover; background-position: center;
+          background-size: cover; 
+          background-position: center;
           flex-shrink: 0;
-          border: 1.5px solid var(--border-strong);
+          border: 2px solid #e5e7eb;
         }
 
         .cp-bubble {
           padding: 10px 14px;
-          border-radius: 18px;
+          border-radius: 16px;
           font-size: 14px;
           font-weight: 400;
           line-height: 1.5;
           max-width: 100%;
           word-break: break-word;
+          transition: all 0.2s ease;
         }
+
         .cp-bubble--mine {
-          background: var(--accent);
-          color: #fff;
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+          color: #ffffff;
           border-bottom-right-radius: 4px;
-          box-shadow: 0 4px 16px var(--accent-glow);
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
         }
+
+        .cp-bubble--mine:hover {
+          box-shadow: 0 6px 16px rgba(59, 130, 246, 0.35);
+          transform: translateY(-1px);
+        }
+
         .cp-bubble--theirs {
-          background: var(--bg-elevated);
-          color: var(--text-primary);
-          border: 1px solid var(--border-strong);
+          background: #f3f4f6;
+          color: #1a1a1a;
           border-bottom-left-radius: 4px;
+          border: 1px solid #e5e7eb;
+        }
+
+        .cp-bubble--theirs:hover {
+          background: #eeeff2;
+          border-color: #d1d5db;
         }
 
         .cp-footer {
           flex-shrink: 0;
-          height: 80px;
-          border-top: 1px solid var(--border);
-          background: var(--bg-sidebar);
+          height: auto;
+          min-height: 90px;
+          border-top: 1px solid #e5e7eb;
+          background: #ffffff;
           display: flex;
           align-items: center;
-          padding: 0 16px;
+          padding: 16px 24px;
           gap: 10px;
+          transition: all 0.3s ease;
         }
 
         .cp-icon-btn {
-          width: 42px; height: 42px;
-          border-radius: var(--radius-sm);
-          background: var(--bg-elevated);
-          border: 1px solid var(--border-strong);
-          display: flex; align-items: center; justify-content: center;
+          width: 40px; 
+          height: 40px;
+          border-radius: 10px;
+          background: #f3f4f6;
+          border: none;
+          display: flex; 
+          align-items: center; 
+          justify-content: center;
           cursor: pointer;
           flex-shrink: 0;
-          color: var(--text-secondary);
-          transition: background 0.18s ease, color 0.18s ease;
+          color: #6b7280;
+          transition: all 0.2s ease;
+          padding: 0;
         }
-        .cp-icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
 
-        @media (max-width: 768px) { .cp-icon-btn--desktop { display: none; } }
+        .cp-icon-btn:hover { 
+          background: #e5e7eb;
+          color: #1a1a1a;
+          transform: scale(1.05);
+        }
+
+        .cp-icon-btn:active {
+          transform: scale(0.95);
+        }
+
+        @media (max-width: 768px) { 
+          .cp-icon-btn--desktop { 
+            display: none; 
+          }
+        }
 
         .cp-input-wrap {
           flex: 1;
-          height: 44px;
-          background: var(--bg-input);
-          border: 1px solid var(--border-strong);
-          border-radius: var(--radius-md);
+          min-height: 44px;
+          background: #f9fafb;
+          border: 1.5px solid #e5e7eb;
+          border-radius: 12px;
           display: flex;
           align-items: center;
-          padding: 0 14px;
-          transition: border-color 0.2s ease, box-shadow 0.2s ease;
+          padding: 0 16px;
+          transition: all 0.2s ease;
         }
+
         .cp-input-wrap:focus-within {
-          border-color: var(--accent-soft);
-          box-shadow: 0 0 0 3px var(--accent-glow);
+          border-color: #3b82f6;
+          background: #ffffff;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
         .cp-input {
@@ -353,29 +529,48 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
           background: transparent;
           border: none;
           outline: none;
-          font-family: var(--font-body);
+          font-family: inherit;
           font-size: 14px;
-          color: var(--text-primary);
-          caret-color: var(--accent);
+          color: #1a1a1a;
+          caret-color: #3b82f6;
+          resize: none;
+          max-height: 100px;
+          padding: 8px 0;
         }
-        .cp-input::placeholder { color: var(--text-muted); }
+
+        .cp-input::placeholder { 
+          color: #9ca3af;
+        }
 
         .cp-send-btn {
-          width: 44px; height: 44px;
-          border-radius: var(--radius-sm);
-          background: var(--accent);
+          width: 44px; 
+          height: 44px;
+          border-radius: 10px;
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
           border: none;
-          display: flex; align-items: center; justify-content: center;
+          display: flex; 
+          align-items: center; 
+          justify-content: center;
           cursor: pointer;
           flex-shrink: 0;
-          color: #fff;
-          box-shadow: 0 0 16px var(--accent-glow);
-          transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+          color: #ffffff;
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+          transition: all 0.2s ease;
+          padding: 0;
         }
+
         .cp-send-btn:hover {
-          transform: scale(1.07);
-          background: #839dff;
-          box-shadow: 0 0 26px rgba(108,140,255,0.38);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+        }
+
+        .cp-send-btn:active { 
+          transform: scale(0.95);
+        }
+
+        .cp-send-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
 
         @keyframes anim_type {
@@ -383,10 +578,7 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
             opacity: 1;
           }
           50% {
-            opacity: 0.5;
-          }
-          90% {
-            opacity: 1;
+            opacity: 0.6;
           }
           100% {
             opacity: 1;
@@ -396,14 +588,15 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
         .typing {
           display: flex;
           gap: 4px;
+          align-items: center;
         }
 
         .typing span {
           width: 6px;
           height: 6px;
-          background: #999;
+          background: #9ca3af;
           border-radius: 50%;
-          animation: bounce 1.2s infinite;
+          animation: bounce 1.4s infinite;
         }
 
         .typing span:nth-child(2) {
@@ -415,17 +608,49 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
         }
 
         @keyframes bounce {
-          0%, 80%, 100% {
-            opacity: 0.3;
+          0%, 60%, 100% {
+            opacity: 0.4;
             transform: translateY(0);
           }
-          40% {
+          30% {
             opacity: 1;
-            transform: translateY(-4px);
+            transform: translateY(-8px);
           }
         }
 
-        .cp-send-btn:active { transform: scale(0.95); }
+        @media (max-width: 768px) {
+          .cp-header {
+            height: 64px;
+            padding: 0 16px;
+          }
+
+          .cp-footer {
+            padding: 12px 16px;
+            min-height: 80px;
+          }
+
+          .cp-messages {
+            padding: 16px;
+            gap: 8px;
+          }
+
+          .cp-msg-row {
+            max-width: 85%;
+          }
+
+          .cp-msg-row--mine {
+            max-width: 85%;
+          }
+
+          .cp-avatar {
+            width: 40px;
+            height: 40px;
+          }
+
+          .cp-username {
+            font-size: 14px;
+          }
+        }
       `}</style>
 
       <section 
@@ -434,47 +659,67 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
           e.stopPropagation()
           e.preventDefault()
         }}>
-        <header className="cp-header">
-          <div className="cp-header-left">
-            <button className="cp-back-btn" onClick={() => setSelectedChat(null)}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
-            </button>
+        
+        {
+          headerBarActive && isMobile ? 
+            <UserInfoHeader   
+              selectedChat={selectedChat}
+              setSelectedChat={setSelectedChat}
+              headerRef={headerRef}/> : 
+          (
+            <header 
+              className="cp-header"
+              onClick={() => setHeaderBarActive(true)}>
+              <div className="cp-header-left">
+                <button 
+                  className="cp-back-btn" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedChat(null);
+                  }}
+                  title="Go back">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M15 18l-6-6 6-6" />
+                  </svg>
+                </button>
 
-            <div 
-              className="cp-avatar"
-              style={{
-                backgroundImage: 
-                `url(${selectedChat?.profileImageUrl !== undefined ?  selectedChat?.profileImageUrl : '/icones/user-icon.jpg'})`,
-              }} />
+                <div 
+                  className="cp-avatar"
+                  style={{
+                    backgroundImage: 
+                    `url(${selectedChat?.profileImageUrl !== undefined ?  selectedChat?.profileImageUrl : '/icones/user-icon.jpg'})`,
+                  }} />
 
-            <div className="cp-user-info">
-              <span className="cp-username">{selectedChat?.username}</span>
-              {
-                selectedChat?.isOnline ? (
-                  <span className={`cp-status ${isTyping && 'typing'}`}>
-                    {
-                      isTyping ? "Typing ..." : "Active now"
-                    }
-                  </span>
-                ) : (
-                  <span className="cp-status-not-active">
-                    Last seen recently
-                  </span>
-                )
-              }
-            </div>
-          </div>
+                <div className="cp-user-info">
+                  <span className="cp-username">{selectedChat?.username}</span>
+                  {
+                    selectedChat?.isOnline ? (
+                      <span className={`cp-status ${isTyping && 'typing'}`}>
+                        {
+                          isTyping ? "Typing..." : "Active now"
+                        }
+                      </span>
+                    ) : (
+                      <span className="cp-status-not-active">
+                        Last seen recently
+                      </span>
+                    )
+                  }
+                </div>
+              </div>
 
-          <button className="cp-more-btn">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" />
-            </svg>
-          </button>
-        </header>
+              <button 
+                className="cp-more-btn"
+                title="More options">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" />
+                </svg>
+              </button>
+            </header>
+          )
+        }
 
-        <div className={`cp-messages px-5 py-4 max-md:px-3 relative`}>
+        <div className="cp-messages">
           {chats.map((chat: any) => (
             <div
               key={chat?.id}
@@ -522,24 +767,28 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
             type="button" 
             className="cp-icon-btn"
             onClick={() => fileRef.current?.click()}
-            >
+            title="Attach image">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M13.234 20.252 21 12.3" />
               <path d="m16 6-8.414 8.586a2 2 0 0 0 0 2.828 2 2 0 0 0 2.828 0l8.414-8.586a4 4 0 0 0 0-5.656 4 4 0 0 0-5.656 0l-8.415 8.585a6 6 0 1 0 8.486 8.486" />
             </svg>
             <input 
-                ref={fileRef} 
-                type="file" 
-                accept=".jpg,.jpeg,.png,.webp"
-                style={{ display: 'none' }} 
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0] && setChatImage) {
-                    setChatImage(e.target.files[0]);
-                  }
-                }}/>
+              ref={fileRef} 
+              type="file" 
+              accept=".jpg,.jpeg,.png,.webp"
+              style={{ display: 'none' }} 
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0] && setChatImage) {
+                  setChatImage(e.target.files[0]);
+                }
+              }}
+            />
           </button>
 
-          <button type="button" className="cp-icon-btn cp-icon-btn--desktop">
+          <button 
+            type="button" 
+            className="cp-icon-btn cp-icon-btn--desktop"
+            title="Emoji">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
               <path d="M8 14s1.5 2 4 2 4-2 4-2" />
@@ -561,7 +810,11 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
             />
           </div>
 
-          <button type="submit" className="cp-send-btn">
+          <button 
+            type="submit" 
+            className="cp-send-btn"
+            disabled={!message.trim()}
+            title="Send message">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
               <path d="m21.854 2.147-10.94 10.939" />

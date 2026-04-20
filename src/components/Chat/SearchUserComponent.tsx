@@ -28,149 +28,57 @@ function SearchUserComponent({ setIsSearching, setSelectedChat }: Props) {
   };
 
   return (
-    <>
-      <style>{`
-        .su-root {
-          width: 100%;
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          font-family: var(--font-body);
-        }
+    <div className="w-full h-full flex flex-col font-sans">
 
-        .su-top {
-          padding: 20px 14px 0;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
+      {/* Top bar */}
+      <div className="px-3.5 pt-5 pb-0 flex items-center gap-2.5">
+        <button
+          className="w-11 h-11 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0 text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors"
+          onClick={() => setIsSearching(false)}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
 
-        .su-back-btn {
-          width: 44px; height: 44px;
-          border-radius: var(--radius-sm);
-          background: var(--bg-elevated);
-          border: 1px solid var(--border-strong);
-          display: flex; align-items: center; justify-content: center;
-          cursor: pointer;
-          flex-shrink: 0;
-          color: var(--text-secondary);
-          transition: background 0.18s ease, color 0.18s ease;
-        }
-        .su-back-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+        <div className="flex-1 h-11 bg-gray-100 border border-gray-200 rounded-xl flex items-center px-3.5 gap-2.5 transition focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100">
+          <svg className="w-4 h-4 text-gray-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="Search users…"
+            className="flex-1 bg-transparent border-none outline-none text-sm text-gray-800 placeholder-gray-400 caret-indigo-500"
+            onChange={(e) => { e.preventDefault(); searching(e.target.value); }}
+          />
+        </div>
+      </div>
 
-        .su-search-bar {
-          flex: 1;
-          height: 44px;
-          background: var(--bg-input);
-          border: 1px solid var(--border-strong);
-          border-radius: var(--radius-md);
-          display: flex;
-          align-items: center;
-          padding: 0 14px;
-          gap: 10px;
-          transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-        .su-search-bar:focus-within {
-          border-color: var(--accent-soft);
-          box-shadow: 0 0 0 3px var(--accent-glow);
-        }
+      <div className="h-px bg-gray-100 mt-4 flex-shrink-0" />
 
-        .su-search-icon {
-          color: var(--text-muted);
-          flex-shrink: 0;
-          width: 16px; height: 16px;
-        }
-
-        .su-input {
-          flex: 1;
-          background: transparent;
-          border: none;
-          outline: none;
-          font-family: var(--font-body);
-          font-size: 14px;
-          color: var(--text-primary);
-          caret-color: var(--accent);
-        }
-        .su-input::placeholder { color: var(--text-muted); }
-
-        .su-divider {
-          height: 1px;
-          background: var(--border);
-          margin: 16px 0 4px;
-          flex-shrink: 0;
-        }
-
-        .su-list {
-          flex: 1;
-          overflow-y: auto;
-          padding: 4px 10px 12px;
-          scrollbar-width: thin;
-          scrollbar-color: var(--bg-elevated) transparent;
-        }
-        .su-list::-webkit-scrollbar { width: 4px; }
-        .su-list::-webkit-scrollbar-track { background: transparent; }
-        .su-list::-webkit-scrollbar-thumb { background: var(--bg-elevated); border-radius: 4px; }
-
-        .su-empty {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          padding: 40px 20px;
-          color: var(--text-muted);
-          font-size: 13px;
-          font-weight: 400;
-        }
-        .su-empty svg { color: var(--text-muted); opacity: 0.5; }
-      `}</style>
-
-      <div className="su-root">
-        <div className="su-top">
-          <button className="su-back-btn" onClick={() => setIsSearching(false)}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
-
-          <div className="su-search-bar">
-            <svg className="su-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      {/* Results */}
+      <div className="flex-1 overflow-y-auto px-2.5 py-1 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+        {searchedUsers.length > 0 ? (
+          searchedUsers.map((user) => (
+            <ChatItemComponent
+              key={user.id}
+              user={user}
+              setSelectedChat={setSelectedChat}
+            />
+          ))
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-2 py-10 text-gray-400">
+            <svg className="w-8 h-8 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8" />
               <path d="m21 21-4.3-4.3" />
             </svg>
-            <input
-              ref={inputRef}
-              type="text"
-              placeholder="Search users…"
-              className="su-input"
-              onChange={(e) => { e.preventDefault(); searching(e.target.value); }}
-            />
+            <span className="text-sm">Search for users to start a conversation</span>
           </div>
-        </div>
-
-        <div className="su-divider" />
-
-        <div className="su-list">
-          {searchedUsers.length > 0 ? (
-            searchedUsers.map((user) => (
-              <ChatItemComponent
-                key={user.id}
-                user={user}
-                setSelectedChat={setSelectedChat}
-              />
-            ))
-          ) : (
-            <div className="su-empty">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
-              </svg>
-              <span>Search for users to start a conversation</span>
-            </div>
-          )}
-        </div>
+        )}
       </div>
-    </>
+    </div>
   );
 }
 
