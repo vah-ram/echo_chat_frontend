@@ -54,6 +54,7 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
         const response = await axiosInstance.get(API.getAllMessages, {
           params: { receiverId: selectedChat.id },
         });
+        console.log(response.data)
         if (response.data) setChats(response.data);
       } catch (err: any) {
         console.log(err.response?.data);

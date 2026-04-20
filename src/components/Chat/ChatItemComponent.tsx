@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { use, useEffect, useState } from 'react'
 import { Message, User } from '../../types/UserType'
 import axiosInstance from '../../lib/axios';
 import { API } from '../../config/api';
@@ -12,80 +12,77 @@ type Props = {
 };
 
 function ChatItemComponent({ user, setSelectedChat, allChats }: Props) {
-  const [unreadChats, setUnreadChats] = useState<number | undefined>();
+  const [unreadChats, setUnreadChats] = useState<number>(0);
+  const [chats, setChats] = useState<Message | []>([]);
   const [lastChat, setLastChat] = useState<string>('');
   const [lastChatFrom, setLastChatFrom] = useState<string>('');
 
   useEffect(() => {
-    const callAsync = async () => {
+    if (!user?.id) return;
+
+    const fetchMessages = async () => {
       try {
         const response = await axiosInstance.get(API.getAllMessages, {
-          params: { receiverId: user?.id },
+          params: { receiverId: user.id },
         });
+
         if (response.data && response.data.length > 0) {
-          setLastChat(response.data[response.data.length - 1].message);
-          setLastChatFrom(
-            response.data[response.data.length - 1].senderId === user?.id
-              ? user?.username || ""
-              : "Ես"
+          const messages: Message[] = response.data.filter(
+            (msg: Message) => msg !== null && msg !== undefined
           );
+
+          if (messages.length > 0) {
+            const lastMsg = messages[messages.length - 1];
+            setLastChat(lastMsg.message ?? '');
+            setLastChatFrom(
+              lastMsg.senderId === user.id ? user.username || '' : 'Ես'
+            );
+
+            const unreadCount = messages.filter(
+              (msg) => msg.senderId === user.id && !msg.isRead
+            ).length;
+            setUnreadChats(unreadCount);
+          }
         }
       } catch (err: any) {
-        console.log(err.response?.data);
+        console.log(err);
       }
     };
-    callAsync();
-  }, [user?.id, unreadChats, allChats]);
+
+    fetchMessages();
+  }, [user?.id, allChats]);
 
   useEffect(() => {
-    const callAsyncMessages = async() => {
-      try {
-        const response = await axiosInstance.get(API.getAllMessages, {
-          params: { receiverId: user?.id },
-        });
-
-        if(response.data) {
-          const unreadCount = response.data.filter((message: Message) => 
-            message.senderId === user?.id && !message.isRead
-          ).length;
-
-          setUnreadChats(unreadCount);
-        }
-      } catch (error: any) {
-        toast.error(error.response?.data.message)
-      };
-    };
-    callAsyncMessages();
-  }, [user?.id]);
-
-  useEffect(() => {
-    if(!user?.id) return;
+    if (!user?.id) return;
 
     const handler = (newMessage: Message) => {
-      if (
-        newMessage.senderId === user?.id &&
-        !newMessage.isRead
-      ) {
-        setUnreadChats((prev) => (prev ?? 0) + 1);
+      if (newMessage.senderId === user.id && !newMessage.isRead) {
+        setUnreadChats((prev) => prev + 1);
+        setLastChat(newMessage.message ?? '');
+        setLastChatFrom(user.username || '');
       }
     };
 
-    socket.on("message-added", handler);
+    socket.on('message-added', handler);
 
     return () => {
-      socket.off("message-added", handler);
+      socket.off('message-added', handler);
     };
   });
 
-  const readMessages = async() => {
-    const response = await axiosInstance.post(API.readMessagesUrl, {
-      receiverId: user?.id,
-    });
+  const readMessages = async () => {
+    try {
+      const response = await axiosInstance.post(API.readMessagesUrl, {
+        receiverId: user?.id,
+      });
 
-    if(response.data) {
-      setUnreadChats(0)
+      if (response.data) {
+        setUnreadChats(0);
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message ?? 'Կարդալու սխալ');
     }
-  }
+  };
 
   return (
     <>
@@ -148,49 +145,41 @@ function ChatItemComponent({ user, setSelectedChat, allChats }: Props) {
         }
       `}</style>
 
-      <div 
-        className="ci-row" 
+      <div
+        className="ci-row"
         onClick={() => {
-          setSelectedChat(user)
-          readMessages()
-        }}>
+          setSelectedChat(user);
+          readMessages();
+        }}
+      >
         <div className="ci-avatar-wrap">
-          <div 
+          <div
             className="ci-avatar"
             style={{
-              backgroundImage: 
-              `url(${user?.profileImageUrl !== undefined ?  user?.profileImageUrl : '/icones/user-icon.jpg'})`,
-            }} />
-          {
-            user?.isOnline ? (
-              <span className="ci-dot" />
-            ) : null
-          }
+              backgroundImage: `url(${user?.profileImageUrl ?? '/icones/user-icon.jpg'})`,
+            }}
+          />
+          {user?.isOnline && <span className="ci-dot" />}
         </div>
 
         <div className="ci-info">
           <p className="ci-name">{user?.username}</p>
           <p className="ci-sub">
-            {lastChatFrom ? `${lastChatFrom}: ` : ''}{lastChat ? lastChat : ""}
+            {lastChatFrom ? `${lastChatFrom}: ` : ''}{lastChat}
           </p>
         </div>
-        
-        {
-          unreadChats !== 0 && (
-            <span className={`w-[20px] h-[20px] 
-            rounded-full bg-white flex items-center justify-center 
-            text-black 
-            ${unreadChats! > 9 ? 'text-[12px]' : 'text-[14px]'
-            } 
-            font-[700]`}>
-              {
-                unreadChats! > 99 ? '99+' : unreadChats
-              }
-            </span>
-          )
-        }
+
+        {unreadChats > 0 && (
+          <span
+            className={`w-[20px] h-[20px] rounded-full bg-white flex items-center 
+            justify-center text-black font-[700] 
+            ${unreadChats > 9 ? 'text-[12px]' : 'text-[14px]'}`}
+          >
+            {unreadChats > 99 ? '99+' : unreadChats}
+          </span>
+        )}
       </div>
-      <Toaster richColors/>
+      <Toaster richColors />
     </>
   );
 }

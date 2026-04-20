@@ -8,7 +8,9 @@ interface ContextMenuItem {
 }
 
 function ChatMessage({ profile, chat, selectedChat, deleteMessageFunc }: any) {
-  const isMine = chat.senderId === profile?.id
+  if (!chat) return null;
+  
+  const isMine = chat?.senderId === profile?.id
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
