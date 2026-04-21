@@ -23,6 +23,7 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<any>(null);
   const [headerBarActive, setHeaderBarActive] = useState<boolean>(false);
+  const [viewingImg, setViewingImg] = useState<string | undefined>('');
 
   const [message, setMessage] = useState("");
   const [chats, setChats] = useState<Message[]>([]);
@@ -652,6 +653,62 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
           }
         }
       `}</style>
+  {
+    viewingImg && (
+      <div
+        onClick={() => setViewingImg(undefined)}
+        className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[9999] p-4 animate-fadeIn"
+      >
+        
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+
+          <a
+            href={viewingImg}
+            download="image.jpg"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1 bg-white/90 hover:bg-white text-black px-3 py-1.5 rounded-md text-sm font-medium shadow transition active:scale-95"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-4-4m4 4l4-4"
+              />
+            </svg>
+            Save
+          </a>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setViewingImg(undefined);
+            }}
+            className="bg-white/90 hover:bg-white text-black px-3 py-1.5 rounded-md text-sm font-medium shadow transition active:scale-95"
+          >
+            ✕
+          </button>
+        </div>
+
+        <img
+          src={viewingImg}
+          alt=""
+          onClick={(e) => e.stopPropagation()}
+          className="max-w-full max-h-full object-contain rounded-xl shadow-2xl transition-transform duration-300 hover:scale-[1.01]"
+        />
+
+        <div className="absolute bottom-4 text-white/60 text-xs text-center">
+          Long press to save on mobile
+        </div>
+      </div>
+    )
+  }
 
       <section 
         className="cp-root"
@@ -732,7 +789,8 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
                 chat={chat}
                 profile={profile}
                 selectedChat={selectedChat}
-                deleteMessageFunc={deleteMessageFunc}/>
+                deleteMessageFunc={deleteMessageFunc}
+                setViewingImg={setViewingImg}/>
             </div>
           ))}
           

@@ -70,8 +70,8 @@ function Chats({
           'h-full bg-white border-r border-gray-200 flex flex-col flex-shrink-0 transition-all duration-300',
           isSearching ? 'md:w-[340px]' : 'md:w-[300px]',
           selectedChat
-            ? 'hidden md:flex'          // chat open  → hidden on mobile
-            : 'flex w-full md:w-auto',  // no chat    → full width on mobile
+            ? 'hidden md:flex'    
+            : 'flex w-full md:w-auto', 
         ].join(' ')}
       >
         {isSearching ? (
@@ -83,14 +83,9 @@ function Chats({
           <>
             <div className="px-5 pt-6 pb-4 flex flex-col gap-3.5">
               <div className="flex items-center justify-between">
-                <h1 className="text-xl font-bold text-gray-900 tracking-tight">Messages</h1>
-                <button
-                  className="w-9 h-9 rounded-xl bg-indigo-500 text-white text-xl font-light flex items-center justify-center shadow-sm hover:bg-indigo-600 hover:scale-105 active:scale-95 transition-all"
-                  aria-label="New conversation"
-                  title="New conversation"
-                >
-                  +
-                </button>
+                <h1 className="text-xl font-bold text-gray-900 tracking-[1px]">
+                  Ecнo
+                </h1>
               </div>
 
               <div

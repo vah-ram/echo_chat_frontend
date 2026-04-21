@@ -7,12 +7,13 @@ interface ContextMenuItem {
   danger?: boolean
 }
 
-function ChatMessage({ profile, chat, selectedChat, deleteMessageFunc, headerRef }: any) {
+function ChatMessage({ profile, chat, selectedChat, deleteMessageFunc, setViewingImg }: any) {
   if (!chat) return null;
   
   const isMine = chat?.senderId === profile?.id
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null);
+  
 
   const avatarUrl = isMine
     ? profile?.profileImageUrl ?? '/icones/user-icon.jpg'
@@ -95,13 +96,19 @@ function ChatMessage({ profile, chat, selectedChat, deleteMessageFunc, headerRef
         style={{ backgroundImage: `url(${avatarUrl})` }}
       />
 
-      <div
+      <div 
+        onClick={() => {
+          if(chat.fileUrl) setViewingImg(chat.fileUrl)
+        }}
         onContextMenu={handleContextMenu}
         className={`cp-bubble select-none ${isMine ? 'cp-bubble--mine' : 'cp-bubble--theirs'}`}
       >
        {chat.fileUrl ? 
        <>
-        <img src={chat.fileUrl} alt="" width="100%" height="100%"/>
+        <img 
+          src={chat.fileUrl} 
+          width="100%" 
+          height="100%"/>
        </>
         : chat.message}
       </div>
