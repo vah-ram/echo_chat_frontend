@@ -101,7 +101,8 @@ function ChatMessage({ profile, chat, selectedChat, deleteMessageFunc, setViewin
           if(chat.fileUrl) setViewingImg(chat.fileUrl)
         }}
         onContextMenu={handleContextMenu}
-        className={`cp-bubble select-none ${isMine ? 'cp-bubble--mine' : 'cp-bubble--theirs'}`}
+        className={`cp-bubble ${chat.fileUrl ? 'cp-bubble-file' : ''} 
+        select-none ${isMine ? 'cp-bubble--mine' : 'cp-bubble--theirs'}`}
       >
        {chat.fileUrl ? 
        <>

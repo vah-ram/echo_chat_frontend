@@ -30,6 +30,12 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 0);
+  };
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -57,8 +63,16 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
   }, []);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chats, isTyping, headerBarActive]);
+    scrollToBottom();
+  }, [chats]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [isTyping]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [headerBarActive]);
 
   const addMessage = async () => {
     if (!message) return;
@@ -86,7 +100,12 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
           params: { receiverId: selectedChat.id },
         });
         console.log(response.data)
-        if (response.data) setChats(response.data);
+        if (response.data) {
+          setChats(response.data);
+          setTimeout(() => {
+            scrollToBottom();
+          }, 100);
+        }
       } catch (err: any) {
         console.log(err.response?.data);
       }
@@ -429,7 +448,7 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
 
         .cp-bubble {
           padding: 10px 14px;
-          border-radius: 16px;
+          border-radius: 12px;
           font-size: 14px;
           font-weight: 400;
           line-height: 1.5;
@@ -438,10 +457,15 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
           transition: all 0.2s ease;
         }
 
+        .cp-bubble-file {
+          padding: 0;
+          overflow: hidden;
+        }
+
         .cp-bubble--mine {
           background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
           color: #ffffff;
-          border-bottom-right-radius: 4px;
+          border-bottom-right-radius: 2.5px;
           box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
         }
 
@@ -453,7 +477,7 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
         .cp-bubble--theirs {
           background: #f3f4f6;
           color: #1a1a1a;
-          border-bottom-left-radius: 4px;
+          border-bottom-left-radius: 2.5px;
           border: 1px solid #e5e7eb;
         }
 
@@ -623,6 +647,10 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
           .cp-header {
             height: 64px;
             padding: 0 16px;
+          }
+
+          .cp-msg-avatar {
+            display: none;
           }
 
           .cp-footer {
