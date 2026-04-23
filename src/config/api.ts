@@ -6,6 +6,7 @@ export const API = {
     searchUsers: `${BASE_URL}/user/search-users`,
     addMessage: `${BASE_URL}/message/add-message`,
     addImage: `${BASE_URL}/message/add-image`,
+    addVoice: `${BASE_URL}/message/add-voice`,
     deleteMessage: `${BASE_URL}/message/delete-message`,
     getAllMessages: `${BASE_URL}/user/all-messages`,
     getContacts: `${BASE_URL}/user/get-contacts`,

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import VoiceAudio from './VoiceAudio'
 
 interface ContextMenuItem {
   icon: string
@@ -96,23 +97,29 @@ function ChatMessage({ profile, chat, selectedChat, deleteMessageFunc, setViewin
         style={{ backgroundImage: `url(${avatarUrl})` }}
       />
 
-      <div 
-        onClick={() => {
-          if(chat.fileUrl) setViewingImg(chat.fileUrl)
-        }}
-        onContextMenu={handleContextMenu}
-        className={`cp-bubble ${chat.fileUrl ? 'cp-bubble-file' : ''} 
-        select-none ${isMine ? 'cp-bubble--mine' : 'cp-bubble--theirs'}`}
-      >
-       {chat.fileUrl ? 
-       <>
-        <img 
-          src={chat.fileUrl} 
-          width="100%" 
-          height="100%"/>
-       </>
-        : chat.message}
-      </div>
+      {
+        chat.voiceUrl 
+        ? 
+        <VoiceAudio voiceUrl={chat.voiceUrl}/>
+        :
+        <div 
+          onClick={() => {
+            if(chat.fileUrl) setViewingImg(chat.fileUrl)
+          }}
+          onContextMenu={handleContextMenu}
+          className={`cp-bubble ${chat.fileUrl ? 'cp-bubble-file' : ''} 
+          select-none ${isMine ? 'cp-bubble--mine' : 'cp-bubble--theirs'}`}
+        >
+        {chat.fileUrl ? 
+        <>
+          <img 
+            src={chat.fileUrl} 
+            width="100%" 
+            height="100%"/>
+        </>
+          : chat.message}
+        </div>
+      }
 
       {menuPos && adjustedPos && (
         <div

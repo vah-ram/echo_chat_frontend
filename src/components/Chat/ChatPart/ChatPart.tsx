@@ -36,6 +36,78 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
     }, 0);
   };
 
+  const [isRecording, setIsRecording] = useState(false)
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+
+  const handleVoice = async () => {
+    if (!isRecording) {
+      const stream = await navigator.mediaDevices.getUserMedia(
+        { audio: true }
+      )
+
+      const mediaRecorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = mediaRecorder
+
+      mediaRecorder.ondataavailable = (e) => {
+        chunksRef.current.push(e.data)
+      }
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" })
+        setAudioBlob(blob)
+        chunksRef.current = []
+      }
+
+      mediaRecorder.start()
+      setIsRecording(true)
+    } else {
+      mediaRecorderRef.current?.stop()
+      setIsRecording(false)
+    }
+  }
+
+  useEffect(() => {
+    const sendAudio = async () => {
+      try {
+        if (!audioBlob) return
+
+        if(!profile) return;
+
+        const formData = new FormData()
+        const file = new File([audioBlob], "voice.webm", {
+          type: "audio/webm",
+        })
+
+        formData.append("file", file)
+        formData.append('senderId', profile?.id);
+        formData.append('receiverId', selectedChat?.id);
+
+        const response = await axiosInstance.post(
+          API.addVoice,
+            formData,
+            {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+              withCredentials: true,
+            }
+				);
+
+        if(response.data) {
+          setChats((prev) => [...prev, response.data]);
+        }
+
+      } catch(err: any) {
+        console.log(err)
+      }
+    }
+
+    sendAudio()
+  }, [audioBlob])
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -76,6 +148,7 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
 
   const addMessage = async () => {
     if (!message) return;
+
     try {
       const response = await axiosInstance.post(API.addMessage, {
         senderId: profile?.id,
@@ -99,7 +172,7 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
         const response = await axiosInstance.get(API.getAllMessages, {
           params: { receiverId: selectedChat.id },
         });
-        console.log(response.data)
+
         if (response.data) {
           setChats(response.data);
           setTimeout(() => {
@@ -515,6 +588,10 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
           padding: 0;
         }
 
+        .cp-icon-btn-voicing {
+          background: #ff0000;
+        }
+
         .cp-icon-btn:hover { 
           background: #e5e7eb;
           color: #1a1a1a;
@@ -873,13 +950,21 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
 
           <button 
             type="button" 
-            className="cp-icon-btn cp-icon-btn--desktop"
-            title="Emoji">
+            className={`cp-icon-btn transition-all ${
+            isRecording 
+              ? 'bg-red-500 text-white shadow-lg scale-110' 
+              : ''
+          }`}
+            title="Voice"
+            onClick={handleVoice}>
+              {isRecording && (
+                <div className="absolute inset-0 rounded-lg animate-pulse bg-red-500/30" />
+              )}
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-              <line x1="9" x2="9.01" y1="9" y2="9" />
-              <line x1="15" x2="15.01" y1="9" y2="9" />
+              <rect x="9" y="2" width="6" height="12" rx="3" />
+              <path d="M5 10a7 7 0 0 0 14 0" />
+              <line x1="12" y1="19" x2="12" y2="22" />
+              <line x1="8" y1="22" x2="16" y2="22" />
             </svg>
           </button>
 

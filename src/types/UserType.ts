@@ -15,6 +15,7 @@ export type Message = {
     message: string,
     isRead: boolean,
     fileUrl?: string,
+    voiceUrl?: string,
     createdAt: string,
     updatedAt: string,
 }

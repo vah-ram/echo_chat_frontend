@@ -108,54 +108,76 @@ function Register() {
       {
         IsVerificationCodeSent ? (
           <>
-             <div className="w-full min-h-screen bg-gray-100 flex flex-col items-center justify-center">
-              <div className="flex flex-col items-center mb-6">
-                <div className="w-16 h-16 bg-gray-900 rounded-2xl flex items-center justify-center mb-4">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                  </svg>
-                </div>
-                <h1 className="text-2xl font-bold text-gray-900">Միանալ Echo-ին</h1>
-                <p className="text-gray-500 text-sm mt-1">Հաստատեք ձեր E-mail հասցեն</p>
+             <div className="w-full min-h-screen bg-gray-100 flex flex-col items-center justify-center px-4 py-6">
+            
+            <div className="flex flex-col items-center mb-6 text-center">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gray-900 rounded-2xl flex items-center justify-center mb-4">
+                <svg
+                  width="24"
+                  height="24"
+                  className="sm:w-7 sm:h-7"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
               </div>
 
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 w-full max-w-md">
-                <p className="text-center text-gray-500 text-sm mb-6">
-                  Մենք ուղարկեցինք 6-նիշ կոդ ձեր էլ. փոստին։ Մուտքագրեք կոդը ստորև։
-                </p>
-
-                <div className="flex justify-center gap-4 mb-6">
-                  {code.map((digit, index) => (
-                    <input
-                      key={index}
-                      ref={(el) => { inputs.current[index] = el; }}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleChange(index, e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(index, e)}
-                      className="w-14 h-14 text-center text-xl font-bold bg-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-gray-400 text-gray-900"
-                    />
-                  ))}
-                </div>
-
-                <button 
-                  className="w-full bg-gray-900 text-white 
-                  font-semibold py-3 rounded-xl hover:bg-gray-800
-                  transition-colors cursor-pointer"
-                  onClick={verifyEmailFunc}>
-                  Հաստատել
-                </button>
-
-                <p className="text-center text-sm text-gray-500 mt-5">
-                  Կոդ չստացա՞ք։{" "}
-                  <span className="font-semibold text-gray-900 cursor-pointer hover:underline">
-                    Նորից ուղարկել
-                  </span>
-                </p>
-              </div>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                Միանալ Echo-ին
+              </h1>
+              <p className="text-gray-500 text-sm mt-1">
+                Հաստատեք ձեր E-mail հասցեն
+              </p>
             </div>
+
+            <div className="bg-white rounded-2xl shadow-sm 
+                            p-5 sm:p-8 w-full max-w-md">
+              
+              <p className="text-center text-gray-500 text-sm mb-6">
+                Մենք ուղարկեցինք 6-նիշ կոդ ձեր էլ. փոստին։ Մուտքագրեք կոդը ստորև։
+              </p>
+
+              <div className="flex justify-center gap-2 sm:gap-4 mb-6">
+                {code.map((digit, index) => (
+                  <input
+                    key={index}
+                    ref={(el) => { inputs.current[index] = el; }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(index, e)}
+                    className="w-10 h-12 sm:w-14 sm:h-14 
+                              text-center text-lg sm:text-xl font-bold 
+                              bg-gray-100 rounded-xl outline-none 
+                              focus:ring-2 focus:ring-gray-400 text-gray-900"
+                  />
+                ))}
+              </div>
+
+              <button 
+                className="w-full bg-gray-900 text-white 
+                          font-semibold py-3 rounded-xl 
+                          hover:bg-gray-800 transition-colors"
+                onClick={verifyEmailFunc}
+              >
+                Հաստատել
+              </button>
+
+              <p className="text-center text-sm text-gray-500 mt-5">
+                Կոդ չստացա՞ք{" "}
+                <span className="font-semibold text-gray-900 cursor-pointer hover:underline">
+                  Նորից ուղարկել
+                </span>
+              </p>
+            </div>
+          </div>
           </>
         ) : 
         (

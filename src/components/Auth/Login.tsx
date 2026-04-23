@@ -3,9 +3,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast, Toaster } from "sonner";
 import { API } from "../../config/api";
+import { setUser } from "../../store/authSlice";
+import { useDispatch } from "react-redux";
 
 function Login() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,7 +32,8 @@ function Login() {
 
       if(response.data) {
         localStorage.setItem("accessToken", response?.data?.accessToken);
-        
+        dispatch(setUser(response?.data?.user));
+
         navigate('/')
       } else {
         return;
