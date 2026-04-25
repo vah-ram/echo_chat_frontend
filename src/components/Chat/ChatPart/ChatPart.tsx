@@ -48,7 +48,15 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
         { audio: true }
       )
 
-      const mediaRecorder = new MediaRecorder(stream)
+      let options: any = {}
+
+      if (MediaRecorder.isTypeSupported("audio/mp4")) {
+        options.mimeType = "audio/mp4"
+      } else if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+        options.mimeType = "audio/webm;codecs=opus"
+      }
+
+      const mediaRecorder = new MediaRecorder(stream, options)
       mediaRecorderRef.current = mediaRecorder
 
       mediaRecorder.ondataavailable = (e) => {
@@ -56,11 +64,15 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
       }
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" })
+        const blob = new Blob(chunksRef.current, {
+          type: mediaRecorder.mimeType,
+        })
+
         setAudioBlob(blob)
         chunksRef.current = []
-      }
 
+        stream.getTracks().forEach(track => track.stop())
+      }
       mediaRecorder.start()
       setIsRecording(true)
     } else {
@@ -721,6 +733,19 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
         }
 
         @media (max-width: 768px) {
+          .cp-input-wrap {
+            border-radius: 24px;
+            padding: 0 2px 0 15px;
+          }
+
+          .cp-send-btn {
+            display: none;
+          }
+
+          .cp-icon-btn {
+            display: none;
+          }
+
           .cp-header {
             height: 64px;
             padding: 0 16px;
@@ -979,6 +1004,60 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
                 typing()
               }}
             />
+
+            <button 
+              type="submit" 
+              className={`hidden max-md:flex ${!message ? 'max-md:hidden' : ''} 
+              w-[43px] h-[43px] rounded-[50%] 
+              items-center justify-center bg-blue-500`}
+              disabled={!message.trim()}
+              title="Send message">
+              <svg width="15" height="15" className="text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
+                <path d="m21.854 2.147-10.94 10.939" />
+              </svg>
+            </button>
+            
+            <button 
+              type="button" 
+              className={`w-[35px] h-[35px] rounded-[50%] hidden max-md:flex  
+              items-center justify-center ${message ? 'max-md:hidden' : ''}`}
+              onClick={() => fileRef.current?.click()}
+              title="Attach image">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M13.234 20.252 21 12.3" />
+                <path d="m16 6-8.414 8.586a2 2 0 0 0 0 2.828 2 2 0 0 0 2.828 0l8.414-8.586a4 4 0 0 0 0-5.656 4 4 0 0 0-5.656 0l-8.415 8.585a6 6 0 1 0 8.486 8.486" />
+              </svg>
+              <input 
+                ref={fileRef} 
+                type="file" 
+                accept=".jpg,.jpeg,.png,.webp"
+                style={{ display: 'none' }} 
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0] && setChatImage) {
+                    setChatImage(e.target.files[0]);
+                  }
+                }}
+              />
+            </button>
+
+            <button 
+              type="button" 
+              className={`w-[35px] h-[35px] rounded-[50%] hidden 
+              items-center justify-center max-md:flex 
+              ${message ? 'max-md:hidden' : ''}`}
+              title="Voice"
+              onClick={handleVoice}>
+                {isRecording && (
+                  <div className="absolute inset-0 rounded-lg animate-pulse bg-red-500/30" />
+                )}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="2" width="6" height="12" rx="3" />
+                <path d="M5 10a7 7 0 0 0 14 0" />
+                <line x1="12" y1="19" x2="12" y2="22" />
+                <line x1="8" y1="22" x2="16" y2="22" />
+              </svg>
+            </button>
           </div>
 
           <button 
