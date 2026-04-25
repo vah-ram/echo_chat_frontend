@@ -1,6 +1,6 @@
 {
-  "name": "Echo",
-  "short_name": "Echo",
+  "name": "VinTab",
+  "short_name": "VinTab",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",

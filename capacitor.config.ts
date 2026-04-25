@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.echo.app',
-  appName: 'Echo',
+  appId: 'com.vintab.app',
+  appName: 'VinTab',
   webDir: 'build'
 };
 

@@ -6,6 +6,9 @@ import { Message, User } from "../../../types/UserType";
 import { socket } from "../../../socket/socket";
 import ChatMessage from "./ChatMessage";
 import UserInfoHeader from "./UserInfoHeader";
+import { Capacitor } from "@capacitor/core";
+import { VoiceRecorder } from "capacitor-voice-recorder";
+import Voice_effect from "./voice/Voice_effect";
 
 type Props = {
   selectedChat: any;
@@ -30,95 +33,150 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+
   const scrollToBottom = () => {
     setTimeout(() => {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 0);
   };
 
-  const [isRecording, setIsRecording] = useState(false)
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
-
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const chunksRef = useRef<Blob[]>([])
+  const cleanupStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => {
+        track.stop();
+      });
+      streamRef.current = null;
+    }
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current = null;
+    }
+  };
 
   const handleVoice = async () => {
-    if (!isRecording) {
-      const stream = await navigator.mediaDevices.getUserMedia(
-        { audio: true }
-      )
+    if (Capacitor.isNativePlatform()) {
+      try {
+        if (!isRecording) {
+          const hasPermission = await VoiceRecorder.hasAudioRecordingPermission();
 
-      let options: any = {}
+          if (!hasPermission.value) {
+            const permission = await VoiceRecorder.requestAudioRecordingPermission();
 
-      if (MediaRecorder.isTypeSupported("audio/mp4")) {
-        options.mimeType = "audio/mp4"
-      } else if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
-        options.mimeType = "audio/webm;codecs=opus"
+            if (!permission.value) {
+              return;
+            }
+          }
+
+          await VoiceRecorder.startRecording();
+          setIsRecording(true);
+        } else {
+          const result = await VoiceRecorder.stopRecording();
+          setIsRecording(false);
+
+          if (result.value && result.value.recordDataBase64) {
+            const base64 = result.value.recordDataBase64;
+
+            const byteCharacters = atob(base64);
+            const byteNumbers = new Array(byteCharacters.length)
+              .fill(0)
+              .map((_, i) => byteCharacters.charCodeAt(i));
+
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: "audio/aac" });
+
+            setAudioBlob(blob);
+          } else {
+            console.log("Recording failed")
+          }
+        }
+      } catch (err) {
+        console.error("VoiceRecorder error:", err);
+        setIsRecording(false);
       }
 
-      const mediaRecorder = new MediaRecorder(stream, options)
-      mediaRecorderRef.current = mediaRecorder
-
-      mediaRecorder.ondataavailable = (e) => {
-        chunksRef.current.push(e.data)
-      }
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, {
-          type: mediaRecorder.mimeType,
-        })
-
-        setAudioBlob(blob)
-        chunksRef.current = []
-
-        stream.getTracks().forEach(track => track.stop())
-      }
-      mediaRecorder.start()
-      setIsRecording(true)
-    } else {
-      mediaRecorderRef.current?.stop()
-      setIsRecording(false)
+      return;
     }
-  }
+
+    if (!isRecording) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+
+        streamRef.current = stream;
+        chunksRef.current = [];
+
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            chunksRef.current.push(e.data);
+          }
+        };
+
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+          setAudioBlob(blob);
+          chunksRef.current = [];
+        };
+
+        mediaRecorder.start();
+        setIsRecording(true);
+      } catch (err) {
+        console.error(err);
+      }
+    } else {
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+      }
+      setIsRecording(false);
+    }
+  };
 
   useEffect(() => {
     const sendAudio = async () => {
       try {
-        if (!audioBlob) return
+        if (!audioBlob) return;
+        if (!profile) return;
+        if (!selectedChat) return;
 
-        if(!profile) return;
+        const formData = new FormData();
+        const file = new File([audioBlob], `voice-${Date.now()}.webm`, {
+          type: audioBlob.type || "audio/webm",
+        });
 
-        const formData = new FormData()
-        const file = new File([audioBlob], "voice.webm", {
-          type: "audio/webm",
-        })
+        formData.append("file", file);
+        formData.append("senderId", profile?.id);
+        formData.append("receiverId", selectedChat?.id);
 
-        formData.append("file", file)
-        formData.append('senderId', profile?.id);
-        formData.append('receiverId', selectedChat?.id);
+        const response = await axiosInstance.post(API.addVoice, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          withCredentials: true,
+        });
 
-        const response = await axiosInstance.post(
-          API.addVoice,
-            formData,
-            {
-              headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-              withCredentials: true,
-            }
-				);
-
-        if(response.data) {
+        if (response.data) {
           setChats((prev) => [...prev, response.data]);
+          soundSendRef?.current?.play();
         }
 
-      } catch(err: any) {
-        console.log(err)
+        setAudioBlob(null);
+        cleanupStream();
+      } catch (err: any) {
+        console.error("Error sending audio:", err);
+        setAudioBlob(null);
       }
-    }
+    };
 
-    sendAudio()
-  }, [audioBlob])
+    sendAudio();
+  }, [audioBlob, profile, selectedChat]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -154,12 +212,8 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
     scrollToBottom();
   }, [isTyping]);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [headerBarActive]);
-
   const addMessage = async () => {
-    if (!message) return;
+    if (!message.trim()) return;
 
     try {
       const response = await axiosInstance.post(API.addMessage, {
@@ -168,13 +222,13 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
         message,
       });
       if (response.data) {
-        soundSendRef?.current?.play()
+        soundSendRef?.current?.play();
         setChats((prev) => [...prev, response.data]);
         setAllChats((prev) => [...prev, response.data]);
         setMessage("");
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message);
+      console.error(err.response?.data?.message)
     }
   };
 
@@ -204,22 +258,22 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
       setChats((prev) => [...prev, newMessage]);
     });
 
-    socket.on('typing', ({ senderId }) => {
+    socket.on("typing", ({ senderId }) => {
       if (selectedChat?._id === senderId) {
         setIsTyping(true);
       }
     });
 
-    socket.on('stop-typing', ({ senderId }) => {
+    socket.on("stop-typing", ({ senderId }) => {
       if (selectedChat?._id === senderId) {
         setIsTyping(false);
       }
     });
 
-    return () => { 
-      socket.off('typing', () => setIsTyping(false))
+    return () => {
+      socket.off("typing");
       socket.off("message-added");
-      socket.off('stop-typing')
+      socket.off("stop-typing");
     };
   });
 
@@ -244,7 +298,7 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
   const deleteMessageFunc = async (id: any) => {
     try {
       const res = await axiosInstance.delete(API.deleteMessage, {
-        data: { messageId: id }
+        data: { messageId: id },
       });
 
       if (res.data) {
@@ -256,42 +310,48 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
     }
   };
 
-  socket.on('delete-chat', (messageId: string) => {
+  socket.on("delete-chat", (messageId: string) => {
     const updatedChats = chats.filter((chat: any) => chat.id !== messageId);
     setChats(updatedChats);
   });
 
   useEffect(() => {
-		const callAsync = async() => {
-			if(!chatImage) return;
-      if(!profile) return;
+    const callAsync = async () => {
+      if (!chatImage) return;
+      if (!profile) return;
+      if (!selectedChat) return;
 
-			const formData = new FormData();
-			formData.append('file', chatImage);
-      formData.append('senderId', profile?.id);
-      formData.append('receiverId', selectedChat?.id);
+      const formData = new FormData();
+      formData.append("file", chatImage);
+      formData.append("senderId", profile?.id);
+      formData.append("receiverId", selectedChat?.id);
 
-			try {
-				const res = await axiosInstance.post(
-				API.addImage,
-					formData,
-					{
-						headers: {
-							'Content-Type': 'multipart/form-data',
-					},
-						withCredentials: true,
-					}
-				);
+      try {
+        const res = await axiosInstance.post(API.addImage, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          withCredentials: true,
+        });
 
-        if(res.data) {
+        if (res.data) {
           setChats((prev) => [...prev, res.data]);
+          soundSendRef?.current?.play();
         }
-			} catch (err) {
-				console.error(err);
-			}
-		};
-		callAsync();
-	}, [chatImage]);
+
+        setChatImage(null);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    callAsync();
+  }, [chatImage, profile, selectedChat]);
+
+  useEffect(() => {
+    return () => {
+      cleanupStream();
+    };
+  }, []);
 
   return (
     <>
@@ -598,10 +658,7 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
           color: #6b7280;
           transition: all 0.2s ease;
           padding: 0;
-        }
-
-        .cp-icon-btn-voicing {
-          background: #ff0000;
+          position: relative;
         }
 
         .cp-icon-btn:hover { 
@@ -614,6 +671,22 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
           transform: scale(0.95);
         }
 
+        .cp-icon-btn.recording {
+          background: #ef4444;
+          color: #ffffff;
+          box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+          animation: pulse-recording 1.5s infinite;
+        }
+
+        @keyframes pulse-recording {
+          0%, 100% {
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+          }
+          50% {
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.5);
+          }
+        }
+
         @media (max-width: 768px) { 
           .cp-icon-btn--desktop { 
             display: none; 
@@ -623,12 +696,11 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
         .cp-input-wrap {
           flex: 1;
           min-height: 44px;
-          background: #f9fafb;
           border: 1.5px solid #e5e7eb;
           border-radius: 12px;
           display: flex;
           align-items: center;
-          padding: 0 16px;
+          padding: 5px;
           transition: all 0.2s ease;
         }
 
@@ -721,6 +793,19 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
           animation-delay: 0.4s;
         }
 
+        @keyframes shadow {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        .shadow {
+          animation: shadow 0.3s ease-out;
+        }  
+
         @keyframes bounce {
           0%, 60%, 100% {
             opacity: 0.4;
@@ -783,154 +868,169 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
           }
         }
       `}</style>
-  {
-    viewingImg && (
-      <div
-        onClick={() => setViewingImg(undefined)}
-        className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[9999] p-4 animate-fadeIn"
-      >
-        
-        <div className="absolute top-4 right-4 flex items-center gap-2">
 
-          <a
-            href={viewingImg}
-            download="image.jpg"
-            onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-1 bg-white/90 hover:bg-white text-black px-3 py-1.5 rounded-md text-sm font-medium shadow transition active:scale-95"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
+      {viewingImg && (
+        <div
+          onClick={() => setViewingImg(undefined)}
+          className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[9999] p-4 animate-fadeIn"
+        >
+          <div className="absolute top-4 right-4 flex items-center gap-2">
+            <a
+              href={viewingImg}
+              download="image.jpg"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-1 bg-white/90 hover:bg-white text-black px-3 py-1.5 rounded-md text-sm font-medium shadow transition active:scale-95"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-4-4m4 4l4-4"
-              />
-            </svg>
-            Save
-          </a>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-4-4m4 4l4-4"
+                />
+              </svg>
+              Save
+            </a>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setViewingImg(undefined);
-            }}
-            className="bg-white/90 hover:bg-white text-black px-3 py-1.5 rounded-md text-sm font-medium shadow transition active:scale-95"
-          >
-            ✕
-          </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setViewingImg(undefined);
+              }}
+              className="bg-white/90 hover:bg-white text-black px-3 py-1.5 rounded-md text-sm font-medium shadow transition active:scale-95"
+            >
+              ✕
+            </button>
+          </div>
+
+          <img
+            src={viewingImg}
+            alt=""
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-full max-h-full object-contain rounded-xl shadow-2xl transition-transform duration-300 hover:scale-[1.01]"
+          />
+
+          <div className="absolute bottom-4 text-white/60 text-xs text-center">
+            Long press to save on mobile
+          </div>
         </div>
+      )}
 
-        <img
-          src={viewingImg}
-          alt=""
-          onClick={(e) => e.stopPropagation()}
-          className="max-w-full max-h-full object-contain rounded-xl shadow-2xl transition-transform duration-300 hover:scale-[1.01]"
-        />
-
-        <div className="absolute bottom-4 text-white/60 text-xs text-center">
-          Long press to save on mobile
-        </div>
-      </div>
-    )
-  }
-
-      <section 
+      <section
         className="cp-root"
         onContextMenu={(e) => {
-          e.stopPropagation()
-          e.preventDefault()
-        }}>
-        
-        {
-          headerBarActive && isMobile ? 
-            <UserInfoHeader   
-              selectedChat={selectedChat}
-              setSelectedChat={setSelectedChat}
-              headerRef={headerRef}/> : 
-          (
-            <header 
-              className="cp-header"
-              onClick={() => setHeaderBarActive(true)}>
-              <div className="cp-header-left">
-                <button 
-                  className="cp-back-btn" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedChat(null);
-                  }}
-                  title="Go back">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M15 18l-6-6 6-6" />
-                  </svg>
-                </button>
-
-                <div 
-                  className="cp-avatar"
-                  style={{
-                    backgroundImage: 
-                    `url(${selectedChat?.profileImageUrl !== undefined ?  selectedChat?.profileImageUrl : '/icones/user-icon.jpg'})`,
-                  }} />
-
-                <div className="cp-user-info">
-                  <span className="cp-username">{selectedChat?.username}</span>
-                  {
-                    selectedChat?.isOnline ? (
-                      <span className={`cp-status ${isTyping && 'typing'}`}>
-                        {
-                          isTyping ? "Typing..." : "Active now"
-                        }
-                      </span>
-                    ) : (
-                      <span className="cp-status-not-active">
-                        Last seen recently
-                      </span>
-                    )
-                  }
-                </div>
-              </div>
-
-              <button 
-                className="cp-more-btn"
-                title="More options">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" />
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+      >
+        {headerBarActive && isMobile ? (
+          <UserInfoHeader
+            selectedChat={selectedChat}
+            setSelectedChat={setSelectedChat}
+            headerRef={headerRef}
+          />
+        ) : (
+          <header className="cp-header" onClick={() => setHeaderBarActive(true)}>
+            <div className="cp-header-left">
+              <button
+                className="cp-back-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedChat(null);
+                }}
+                title="Go back"
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M15 18l-6-6 6-6" />
                 </svg>
               </button>
-            </header>
-          )
-        }
+
+              <div
+                className="cp-avatar"
+                style={{
+                  backgroundImage: `url(${
+                    selectedChat?.profileImageUrl !== undefined
+                      ? selectedChat?.profileImageUrl
+                      : "/icones/user-icon.jpg"
+                  })`,
+                }}
+              />
+
+              <div className="cp-user-info">
+                <span className="cp-username">{selectedChat?.username}</span>
+                {selectedChat?.isOnline ? (
+                  <span className={`cp-status ${isTyping && "typing"}`}>
+                    {isTyping ? "Typing..." : "Active now"}
+                  </span>
+                ) : (
+                  <span className="cp-status-not-active">Last seen recently</span>
+                )}
+              </div>
+            </div>
+
+            <button className="cp-more-btn" title="More options">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="5" r="1" />
+                <circle cx="12" cy="12" r="1" />
+                <circle cx="12" cy="19" r="1" />
+              </svg>
+            </button>
+          </header>
+        )}
 
         <div className="cp-messages">
           {chats.map((chat: any) => (
             <div
               key={chat?.id}
               className={`cp-msg-row ${
-                chat?.senderId === profile?.id ? 
-                "cp-msg-row--mine" :
-                "cp-msg-row--theirs"}`}
+                chat?.senderId === profile?.id
+                  ? "cp-msg-row--mine"
+                  : "cp-msg-row--theirs"
+              }`}
             >
-              <ChatMessage 
+              <ChatMessage
                 chat={chat}
                 profile={profile}
                 selectedChat={selectedChat}
                 deleteMessageFunc={deleteMessageFunc}
-                setViewingImg={setViewingImg}/>
+                setViewingImg={setViewingImg}
+              />
             </div>
           ))}
-          
+
           {isTyping && (
             <div className="cp-msg-row cp-msg-row--theirs">
               <div
                 className="cp-msg-avatar"
-                style={{ backgroundImage: `url(${
-                  selectedChat?.profileImageUrl ?? '/icones/user-icon.jpg'
-                })` }}
+                style={{
+                  backgroundImage: `url(${
+                    selectedChat?.profileImageUrl ?? "/icones/user-icon.jpg"
+                  })`,
+                }}
               />
               <div className="cp-bubble cp-bubble--theirs">
                 <div className="typing">
@@ -941,51 +1041,64 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
               </div>
             </div>
           )}
-          <div ref={bottomRef}/>
+          <div ref={bottomRef} />
         </div>
 
         <form
           className="cp-footer"
-          onSubmit={(e) => { 
-            e.preventDefault(); 
+          onSubmit={(e) => {
+            e.preventDefault();
             addMessage();
           }}
         >
-          <button 
-            type="button" 
+          <button
+            type="button"
             className="cp-icon-btn"
             onClick={() => fileRef.current?.click()}
-            title="Attach image">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            title="Attach image"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M13.234 20.252 21 12.3" />
               <path d="m16 6-8.414 8.586a2 2 0 0 0 0 2.828 2 2 0 0 0 2.828 0l8.414-8.586a4 4 0 0 0 0-5.656 4 4 0 0 0-5.656 0l-8.415 8.585a6 6 0 1 0 8.486 8.486" />
             </svg>
-            <input 
-              ref={fileRef} 
-              type="file" 
+            <input
+              ref={fileRef}
+              type="file"
               accept=".jpg,.jpeg,.png,.webp"
-              style={{ display: 'none' }} 
+              style={{ display: "none" }}
               onChange={(e) => {
-                if (e.target.files && e.target.files[0] && setChatImage) {
+                if (e.target.files && e.target.files[0]) {
                   setChatImage(e.target.files[0]);
                 }
               }}
             />
           </button>
 
-          <button 
-            type="button" 
-            className={`cp-icon-btn transition-all ${
-            isRecording 
-              ? 'bg-red-500 text-white shadow-lg scale-110' 
-              : ''
-          }`}
-            title="Voice"
-            onClick={handleVoice}>
-              {isRecording && (
-                <div className="absolute inset-0 rounded-lg animate-pulse bg-red-500/30" />
-              )}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <button
+            type="button"
+            className={`cp-icon-btn ${isRecording ? "recording" : ""}`}
+            title={isRecording ? "Stop recording" : "Record voice"}
+            onClick={handleVoice}
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <rect x="9" y="2" width="6" height="12" rx="3" />
               <path d="M5 10a7 7 0 0 0 14 0" />
               <line x1="12" y1="19" x2="12" y2="22" />
@@ -1000,78 +1113,133 @@ function ChatPart({ selectedChat, setSelectedChat, setAllChats, profile }: Props
               placeholder="Type a message…"
               className="cp-input"
               onChange={(e) => {
-                setMessage(e.target.value)
-                typing()
+                setMessage(e.target.value);
+                typing();
               }}
             />
 
-            <button 
-              type="submit" 
-              className={`hidden max-md:flex ${!message ? 'max-md:hidden' : ''} 
-              w-[43px] h-[43px] rounded-[50%] 
+            <button
+              type="submit"
+              className={`hidden max-md:flex ${!message ? "max-md:hidden" : ""} 
+              p-2.5 rounded-[50%] 
               items-center justify-center bg-blue-500`}
               disabled={!message.trim()}
-              title="Send message">
-              <svg width="15" height="15" className="text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              title="Send message"
+            >
+              <svg
+                width="19"
+                height="19"
+                className="text-white"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
                 <path d="m21.854 2.147-10.94 10.939" />
               </svg>
             </button>
-            
-            <button 
-              type="button" 
-              className={`w-[35px] h-[35px] rounded-[50%] hidden max-md:flex  
-              items-center justify-center ${message ? 'max-md:hidden' : ''}`}
+
+            <button
+              type="button"
+              className={`p-2.5 rounded-[50%] hidden max-md:flex  
+              items-center justify-center ${message ? "max-md:hidden" : ""}`}
               onClick={() => fileRef.current?.click()}
-              title="Attach image">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              title="Attach image"
+            >
+              <svg
+                width="19"
+                height="19"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M13.234 20.252 21 12.3" />
                 <path d="m16 6-8.414 8.586a2 2 0 0 0 0 2.828 2 2 0 0 0 2.828 0l8.414-8.586a4 4 0 0 0 0-5.656 4 4 0 0 0-5.656 0l-8.415 8.585a6 6 0 1 0 8.486 8.486" />
               </svg>
-              <input 
-                ref={fileRef} 
-                type="file" 
+              <input
+                ref={fileRef}
+                type="file"
                 accept=".jpg,.jpeg,.png,.webp"
-                style={{ display: 'none' }} 
+                style={{ display: "none" }}
                 onChange={(e) => {
-                  if (e.target.files && e.target.files[0] && setChatImage) {
+                  if (e.target.files && e.target.files[0]) {
                     setChatImage(e.target.files[0]);
                   }
                 }}
               />
             </button>
 
-            <button 
-              type="button" 
-              className={`w-[35px] h-[35px] rounded-[50%] hidden 
+            <button
+              type="button"
+              className={`p-2.5 rounded-[50%] hidden 
               items-center justify-center max-md:flex 
-              ${message ? 'max-md:hidden' : ''}`}
-              title="Voice"
-              onClick={handleVoice}>
-                {isRecording && (
-                  <div className="absolute inset-0 rounded-lg animate-pulse bg-red-500/30" />
-                )}
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="9" y="2" width="6" height="12" rx="3" />
-                <path d="M5 10a7 7 0 0 0 14 0" />
-                <line x1="12" y1="19" x2="12" y2="22" />
-                <line x1="8" y1="22" x2="16" y2="22" />
-              </svg>
+              ${message ? "max-md:hidden" : ""} ${isRecording ? "bg-blue-500" : ""}`}
+              title={isRecording ? "Stop recording" : "Record voice"}
+              onClick={handleVoice} 
+            >
+              {
+                isRecording ? 
+                (
+                  <div className="w-[20px] h-[20px] flex 
+                  items-center justify-center">
+                    <Voice_effect />
+                  </div>
+                ) : 
+                (
+                  <svg
+                    width="19"
+                    height="19"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="9" y="2" width="6" height="12" rx="3" />
+                    <path d="M5 10a7 7 0 0 0 14 0" />
+                    <line x1="12" y1="19" x2="12" y2="22" />
+                    <line x1="8" y1="22" x2="16" y2="22" />
+                  </svg>
+                )
+              }
             </button>
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="cp-send-btn"
             disabled={!message.trim()}
-            title="Send message">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            title="Send message"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
               <path d="m21.854 2.147-10.94 10.939" />
             </svg>
           </button>
         </form>
       </section>
+
+      {headerBarActive && isMobile ? (
+        <div className="w-full h-full bg-[#0019] absolute top-0 left-0 
+        shadow"/>
+        ) : <></>
+      }
 
       <Toaster richColors />
       <audio src="/sound/message-receive.mp3" preload="auto" ref={soundReceiveRef} />

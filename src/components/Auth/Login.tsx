@@ -62,7 +62,7 @@ function Login() {
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900">Բարի գալուստ Echo</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Բարի գալուստ VinTab</h1>
         <p className="text-gray-500 text-sm mt-1">
           Մուտք գործիր շարունակելու համար
         </p>

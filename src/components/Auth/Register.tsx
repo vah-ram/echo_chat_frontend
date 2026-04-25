@@ -3,11 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { API } from "../../config/api";
 import { toast, Toaster } from "sonner";
 import axiosInstance from "../../lib/axios";
+import { useDispatch } from "react-redux";
+import { setUser } from "../../store/authSlice";
 
 function Register() {
   const navigate = useNavigate();
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
+  const dispatch = useDispatch();
 
   const handleChange = (index: number, value: string) => {
     if (!/^\d?$/.test(value)) return;
@@ -94,6 +97,7 @@ function Register() {
 
       if(res.data) {
         localStorage.setItem("accessToken", res.data.accessToken);
+        dispatch(setUser(res?.data?.user));
         navigate('/')
       }
     } catch(err: any) {
@@ -128,7 +132,7 @@ function Register() {
               </div>
 
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-                Միանալ Echo-ին
+                Միանալ VinTab-ին
               </h1>
               <p className="text-gray-500 text-sm mt-1">
                 Հաստատեք ձեր E-mail հասցեն
@@ -200,7 +204,7 @@ function Register() {
               </svg>
             </div>
             <h1 className="text-2xl font-bold text-gray-900">
-              Միանալ Echo-ին
+              Միանալ VinTab-ին
             </h1>
             <p className="text-gray-500 text-sm mt-1">
               Ստեղծիր քո հաշիվը
